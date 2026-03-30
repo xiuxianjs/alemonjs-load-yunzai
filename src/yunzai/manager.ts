@@ -12,15 +12,17 @@ import { execFile, fork } from 'node:child_process';
 import { existsSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import type { PluginInfo } from '../path';
 import { getDefaultRepo, getGhProxy, getYunzaiDir, WORKER_PATH, YARN_PATH } from '../path';
-import type { IPCReply, ParentToWorker, WorkerToParent } from './protocol';
+import type { IPCApiRequest, IPCReply, ParentToWorker, WorkerToParent } from './protocol';
 
 type ReplyHandler = (reply: IPCReply) => void;
+type ApiRequestHandler = (req: IPCApiRequest) => void;
 
 class YunzaiManager {
   private worker: ChildProcess | null = null;
   private ready = false;
   private replyHandlers = new Set<ReplyHandler>();
   private doneHandlers = new Set<(done: any) => void>();
+  private apiRequestHandlers = new Set<ApiRequestHandler>();
   private restartCount = 0;
   private maxRestarts = 3;
   private restartTimer: ReturnType<typeof setTimeout> | null = null;
@@ -412,6 +414,18 @@ class YunzaiManager {
     return () => this.doneHandlers.delete(handler);
   }
 
+  /** 注册 API 请求处理器（Worker 发起 API 调用时回调） */
+  onApiRequest(handler: ApiRequestHandler): () => void {
+    this.apiRequestHandlers.add(handler);
+
+    return () => this.apiRequestHandlers.delete(handler);
+  }
+
+  /** 发送任意消息给 Worker（用于 API 响应等） */
+  sendToWorker(msg: ParentToWorker): void {
+    this.send(msg as any);
+  }
+
   // ─── 内部方法 ───
 
   private handleMessage(msg: WorkerToParent): void {
@@ -423,6 +437,11 @@ class YunzaiManager {
         break;
       case 'done':
         for (const h of this.doneHandlers) {
+          h(msg);
+        }
+        break;
+      case 'api':
+        for (const h of this.apiRequestHandlers) {
           h(msg);
         }
         break;

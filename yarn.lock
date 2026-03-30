@@ -2,44 +2,44 @@
 # yarn lockfile v1
 
 
-"@alemonjs/bubble@^2.1.4":
-  version "2.1.5"
-  resolved "https://registry.npmmirror.com/@alemonjs/bubble/-/bubble-2.1.5.tgz#621d8e38f75ed3d7f4146e647fc69408e3af9f71"
-  integrity sha512-PpSUMFBTlsInEs1XjfMqRtkMbmzSPoLh+wpkx9s/43ru4jTRq5kP9KFGRqwU9nSJ2SZ0gWvvmmim0qZNVGClAg==
+"@alemonjs/bubble@^2.1.6":
+  version "2.1.6"
+  resolved "https://registry.npmmirror.com/@alemonjs/bubble/-/bubble-2.1.6.tgz#a1ca2d1e695ffadaeb2c61dfca3fff4b4ce74762"
+  integrity sha512-7z+XykARWGmJpJwBO2x8ITCZUmqNtxqgkBshXuhV1DHrDJUYZX1whf+ff3jwdkqANSpjLhI4Koob+qaP9IKNGA==
   dependencies:
     http-proxy-agent "^7.0.2"
     https-proxy-agent "^7"
 
-"@alemonjs/db@^0.0.13":
-  version "0.0.13"
-  resolved "https://registry.npmmirror.com/@alemonjs/db/-/db-0.0.13.tgz#82924d198b401ae0923d9f82118bea822e8e1784"
-  integrity sha512-wCZjD9BGU1E+1R909iZYO0hjpJWA8UWbVscH1SdpUVvmQ7A8fGWoWpLUqmtEWScFtZxeEU6X2dHMmylQKLlUyQ==
+"@alemonjs/db@^0.0.16":
+  version "0.0.16"
+  resolved "https://registry.npmmirror.com/@alemonjs/db/-/db-0.0.16.tgz#40636492019e4d17461a2ef3fcc950aacefbff0c"
+  integrity sha512-6M4abSxvmyABP69uWOhOlwQBLpJ+iNyS5j9hNGgrKcvMPsOVEndxgagqRgYz2h+Fflgel+Csye8gYlWEAS0BIw==
   dependencies:
     dayjs "^1.11.13"
     ioredis "^5.4.1"
     mysql2 "^3.6.2"
     sequelize "^6.33.0"
 
-"@alemonjs/discord@^2.1.7":
-  version "2.1.8"
-  resolved "https://registry.npmmirror.com/@alemonjs/discord/-/discord-2.1.8.tgz#448a95b879c87d769c103aee7dc9bfbd82e1da9e"
-  integrity sha512-+LlEBjmU0S7f0ap3WL8f0Vp6nmHGK6aNsjV46ayV6ntzdLlIYk4W1J9McZSUwGx1k//UTr4MwqZHoLKlqpsVsw==
+"@alemonjs/discord@^2.1.9":
+  version "2.1.9"
+  resolved "https://registry.npmmirror.com/@alemonjs/discord/-/discord-2.1.9.tgz#13338bb091d33a6e82604610ee0ca31052941ac5"
+  integrity sha512-vgjaGYZN8eJD3OlwWII+vSmgLvWXIBOt3eGackzdSstFPwtJWD8aF/ZV6L7xF4KG91J2GJ2dt99okVpYDi9l1g==
   dependencies:
     http-proxy-agent "^7.0.2"
     https-proxy-agent "^7"
 
-"@alemonjs/onebot@^2.1.4":
-  version "2.1.8"
-  resolved "https://registry.npmmirror.com/@alemonjs/onebot/-/onebot-2.1.8.tgz#84884d96b742e3b3e7a3d7375bce9f9f4ff55ca6"
-  integrity sha512-yspYsFiyC6veXSgWgpXxmI0y1Ou84v2WGfmLQDxx0YiZMqeI8V/uA+QOJ8DoNLpWXUvRNjmk64YfI/5TcpfFCw==
+"@alemonjs/onebot@^2.1.9":
+  version "2.1.9"
+  resolved "https://registry.npmmirror.com/@alemonjs/onebot/-/onebot-2.1.9.tgz#75272f34abf96fbee1d8a95cd744c7ce6f39495b"
+  integrity sha512-VsOjA0TehNxtb5imyM1z3kkCYyLsDdDDYT5u6wFWavTLJiQmYjnHQvdMlJ4iNKzM1S5XVWwjiDUNTyJcEBFWxg==
   dependencies:
     dayjs "^1.11.13"
     ws "^8.18.1"
 
-"@alemonjs/qq-bot@^2.1.6":
-  version "2.1.8"
-  resolved "https://registry.npmmirror.com/@alemonjs/qq-bot/-/qq-bot-2.1.8.tgz#e0fb71c4ad98f413f3aa6fbb2cb4ebcc8f50f91d"
-  integrity sha512-zah+eyQIikfvjVTZxZNLkAHEqZsJtbK7iH//GrI9DipEs0JkdPFduhlZ5WjMeIfYNONs8Th04BaZo5X0L22qAA==
+"@alemonjs/qq-bot@^2.1.9":
+  version "2.1.9"
+  resolved "https://registry.npmmirror.com/@alemonjs/qq-bot/-/qq-bot-2.1.9.tgz#7602bf5e6e6fe0b04c897338cad6435ca8e68b7e"
+  integrity sha512-tqaZ0BA+iOOnSU4vG2SEOMaBt3FhZOF/Fh7bupaGfNr+GCtQufHl2t00cXySqhfEApVjqL9b/8jNYMYBmDEoBw==
   dependencies:
     "@noble/curves" "^1.7.0"
     axios "^1.4.0"
@@ -924,10 +924,10 @@ ajv@^6.14.0:
     json-schema-traverse "^0.4.1"
     uri-js "^4.2.2"
 
-alemonjs@^2.1.42:
-  version "2.1.44"
-  resolved "https://registry.npmmirror.com/alemonjs/-/alemonjs-2.1.44.tgz#37bdba248f66139924d11e6f12e2be7e16f94340"
-  integrity sha512-jfmg22yrlIkcC8AFXOtpRvImpWs1VvbisGIpqhc5+bqSQfiVBGYTmlHs8IVljm04TeE6atkOTpe0/zQJS76pXQ==
+alemonjs@^2.1.46:
+  version "2.1.46"
+  resolved "https://registry.npmmirror.com/alemonjs/-/alemonjs-2.1.46.tgz#cd2921c5e6093d1c0e00c6c983b52c8ffa22d79e"
+  integrity sha512-TcB7npZ3DrNbZtfgkk9JZ+Vsd8oCwRrnwiM+BUqbZZ6rw7DdFSmZSdv9Om2KaDREsn1fioBxzsCVYGhZFN0d6Q==
   dependencies:
     "@koa/cors" "^5.0.0"
     axios "^1.10.0"

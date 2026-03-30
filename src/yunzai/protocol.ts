@@ -65,7 +65,31 @@ export interface IPCShutdown {
   type: 'shutdown';
 }
 
-export type ParentToWorker = IPCEventMessage | IPCShutdown;
+/** 父进程返回 API 调用结果给 Worker */
+export interface IPCApiResponse {
+  type: 'api_response';
+  /** 对应请求的 reqId */
+  reqId: string;
+  /** 是否成功 */
+  ok: boolean;
+  /** 返回数据 */
+  data?: any;
+  /** 错误信息 */
+  error?: string;
+}
+
+/** 父进程返回 reply 发送结果（包含真实 message_id，供撤回使用） */
+export interface IPCReplyResult {
+  type: 'reply_result';
+  /** 对应的 replyId */
+  replyId: string;
+  /** 平台返回的消息 ID */
+  messageId?: string;
+  /** 是否发送成功 */
+  ok: boolean;
+}
+
+export type ParentToWorker = IPCEventMessage | IPCShutdown | IPCApiResponse | IPCReplyResult;
 
 // ─────────── Worker → 父进程 ───────────
 
@@ -80,6 +104,8 @@ export interface IPCReply {
   type: 'reply';
   /** 对应的消息 ID */
   id: string;
+  /** 回复唯一 ID（用于关联 reply_result） */
+  replyId: string;
   /** 回复内容列表（一次 reply 可能有多个 segment） */
   contents: ReplyContent[];
 }
@@ -106,13 +132,24 @@ export interface IPCDone {
   replied: boolean;
 }
 
-export type WorkerToParent = IPCReady | IPCReply | IPCError | IPCLog | IPCDone;
+/** Worker 发起 API 调用请求（需父进程代为执行） */
+export interface IPCApiRequest {
+  type: 'api';
+  /** 请求唯一 ID，用于关联响应 */
+  reqId: string;
+  /** API 动作名称，如 'sendGroupMsg', 'setGroupKick' 等 */
+  action: string;
+  /** 请求参数 */
+  params: Record<string, any>;
+}
+
+export type WorkerToParent = IPCReady | IPCReply | IPCError | IPCLog | IPCDone | IPCApiRequest;
 
 // ─────────── 共享类型 ───────────
 
 /** 序列化后的回复内容 */
 export interface ReplyContent {
-  type: 'text' | 'image' | 'at' | 'face' | 'forward' | 'other';
-  /** 文本内容 / base64 图片 / JSON 数据 */
+  type: 'text' | 'image' | 'at' | 'face' | 'forward' | 'record' | 'video' | 'other';
+  /** 文本内容 / base64 图片 / 文件路径 / JSON 数据 */
   data: string;
 }
