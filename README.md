@@ -14,6 +14,13 @@
 
 `#yz安装` -> `#yz安装miao` -> `#yz安装依赖` -> `#yz启动/#yz重启`
 
+```yaml
+# alemon.config.yaml 新增 uk
+# 可发指令后观察控制台 [UserKey:abcdefg] 后得到
+master_key:
+  abcdefg: true
+```
+
 ## 安装方式1: Git
 
 ### alemongo/alemondesk
