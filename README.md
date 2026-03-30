@@ -10,16 +10,19 @@
 
 所有管理指令⚠️`仅限主人使用`，前缀支持 `#yz` 或 `#云崽`,使用`#yz帮助`了解基本使用
 
-- 安装一般操作步骤
-
-`#yz安装` -> `#yz安装miao` -> `#yz安装依赖` -> `#yz启动/#yz重启`
+- alemon.config.yaml 新增 uk
 
 ```yaml
-# alemon.config.yaml 新增 uk
+# https://alemonjs.com/docs/config
 # 可发指令后观察控制台 [UserKey:abcdefg] 后得到
+# 不配置将无法正常获得主人权限
 master_key:
   abcdefg: true
 ```
+
+- 安装一般操作步骤
+
+`#yz安装` -> `#yz安装miao` -> `#yz安装依赖` -> `#yz启动/#yz重启`
 
 ## 安装方式1: Git
 
