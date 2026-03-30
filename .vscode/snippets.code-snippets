@@ -1,0 +1,43 @@
+{
+  "Alemon Response Handler": {
+    "prefix": "atext",
+    "body": [
+      "import { selects } from '@src/response/config';",
+      "import { Text, useMessage } from 'alemonjs';",
+      "",
+      "export default onResponse(selects, e => {",
+      "  const [message] = useMessage(e);",
+      "",
+      "  try {",
+      "    const text = e.MessageText;",
+      "",
+      "    void message.send(format(Text(text)));",
+      "  } catch (error) {",
+      "    logger.error(error);",
+      "  }",
+      "});"
+    ],
+    "description": "创建 Alemon 响应处理器"
+  },
+  "Alemon MD Response Handler": {
+    "prefix": "amd",
+    "body": [
+      "import { selects } from '@src/response/config';",
+      "import { MD, useMessage } from 'alemonjs';",
+      "",
+      "export default onResponse(selects, e => {",
+      "  const [message] = useMessage(e);",
+      "",
+      "  try {",
+      "    const text = e.MessageText;",
+      "    const { title } = MD;",
+      "",
+      "    void message.send(format(MD(title(text))));",
+      "  } catch (error) {",
+      "    logger.error(error);",
+      "  }",
+      "});"
+    ],
+    "description": "创建 Alemon MD 格式响应处理器"
+  }
+}

@@ -6,12 +6,12 @@
  * 2. 子进程生命周期 — fork / stop / restart Worker
  * 3. IPC 通信 — 父子进程消息收发
  */
-import { fork, execFile } from 'node:child_process';
-import type { ChildProcess } from 'node:child_process';
-import { existsSync } from 'node:fs';
 import { logger } from 'alemonjs';
-import { YUNZAI_DIR, WORKER_PATH, DEFAULT_REPO, YARN_PATH } from '../path';
-import type { ParentToWorker, WorkerToParent, IPCReply } from './protocol';
+import type { ChildProcess } from 'node:child_process';
+import { execFile, fork } from 'node:child_process';
+import { existsSync, readFileSync, writeFileSync } from 'node:fs';
+import { DEFAULT_REPO, WORKER_PATH, YARN_PATH, YUNZAI_DIR } from '../path';
+import type { IPCReply, ParentToWorker, WorkerToParent } from './protocol';
 
 type ReplyHandler = (reply: IPCReply) => void;
 
@@ -52,6 +52,7 @@ class YunzaiManager {
 
     logger.info(`[Yunzai] 正在克隆 ${repoUrl} ...`);
     await this.git(['clone', '--depth', '1', repoUrl, YUNZAI_DIR]);
+    this.ensureWorkspaces();
     logger.info('[Yunzai] 克隆完成，正在安装依赖...');
     await this.npmInstall(YUNZAI_DIR);
     logger.info('[Yunzai] 依赖安装完成');
@@ -79,7 +80,7 @@ class YunzaiManager {
     this.worker = fork(WORKER_PATH, [], {
       cwd: YUNZAI_DIR,
       stdio: ['pipe', 'pipe', 'pipe', 'ipc'],
-      env: { ...process.env, YUNZAI_DIR },
+      env: { ...process.env, YUNZAI_DIR }
     });
 
     // 转发子进程标准输出
@@ -145,7 +146,7 @@ class YunzaiManager {
 
     this.send({ type: 'shutdown' });
 
-    await new Promise<void>((resolve) => {
+    await new Promise<void>(resolve => {
       const timeout = setTimeout(() => {
         this.worker?.kill('SIGKILL');
         resolve();
@@ -211,25 +212,50 @@ class YunzaiManager {
   /** 使用内置 yarn 安装依赖（原生支持 workspaces，插件子包依赖一并安装） */
   private npmInstall(cwd: string): Promise<string> {
     return new Promise((resolve, reject) => {
-      execFile(
-        process.execPath,
-        [YARN_PATH, 'install', '--production=false'],
-        { cwd, timeout: 120_000 },
-        (err, stdout, stderr) => {
-          if (err) reject(new Error(stderr || err.message));
-          else resolve(stdout);
-        },
-      );
+      execFile(process.execPath, [YARN_PATH, 'install', '--production=false'], { cwd, timeout: 120_000 }, (err, stdout, stderr) => {
+        if (err) reject(new Error(stderr || err.message));
+        else resolve(stdout);
+      });
     });
   }
 
   /** 重新安装依赖（用于依赖缺失后修复） */
   async installDeps(): Promise<string> {
     if (!this.isInstalled) throw new Error('Yunzai 未安装');
+    this.ensureWorkspaces();
     logger.info('[Yunzai] 正在安装依赖...');
     const out = await this.npmInstall(YUNZAI_DIR);
     logger.info('[Yunzai] 依赖安装完成');
     return out;
+  }
+
+  /**
+   * 确保 package.json 包含 private 和 workspaces 字段
+   * Yarn 1.x 要求 private: true 才能启用 workspaces
+   */
+  private ensureWorkspaces(): void {
+    const pkgPath = `${YUNZAI_DIR}/package.json`;
+    if (!existsSync(pkgPath)) return;
+
+    const raw = readFileSync(pkgPath, 'utf-8');
+    const pkg = JSON.parse(raw);
+    let modified = false;
+
+    if (!pkg.private) {
+      pkg.private = true;
+      modified = true;
+      logger.info('[Yunzai] package.json 补充 private: true');
+    }
+
+    if (!Array.isArray(pkg.workspaces) || !pkg.workspaces.includes('plugins/*')) {
+      pkg.workspaces = ['plugins/*'];
+      modified = true;
+      logger.info('[Yunzai] package.json 补充 workspaces: ["plugins/*"]');
+    }
+
+    if (modified) {
+      writeFileSync(pkgPath, JSON.stringify(pkg, null, 2) + '\n', 'utf-8');
+    }
   }
 }
 

@@ -1,0 +1,9 @@
+#!/usr/bin/env sh
+
+echo "🧹 Cleaning .DS_Store files..."
+find . -name '.DS_Store' -type f -delete
+
+echo "📝 Running lint-staged..."
+npx lint-staged
+
+echo "✅ All checks passed!"

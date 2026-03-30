@@ -6,19 +6,19 @@ const responseRouter = defineRouter([
   {
     regular: /^#(yz|云崽)(help|帮助)$/,
     selects: ['message.create', 'private.message.create'],
-    handler: lazy(() => import('./response/help')),
+    handler: lazy(() => import('./response/help'))
   },
   // 管理指令
   {
     regular: /^#(yz|云崽)/,
     selects: ['message.create', 'private.message.create'],
-    handler: lazy(() => import('./response/admin')),
+    handler: lazy(() => import('./response/admin'))
   },
   // 其余全部转发给 Yunzai Worker
   {
     regular: /.*/,
-    handler: lazy(() => import('./yunzai/bridge')),
-  },
+    handler: lazy(() => import('./yunzai/bridge'))
+  }
 ]);
 
 export default defineChildren({
@@ -36,5 +36,5 @@ export default defineChildren({
     } else {
       logger.info('[Yunzai] 未安装。发送 #yz安装 进行安装');
     }
-  },
+  }
 });

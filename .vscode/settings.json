@@ -1,0 +1,155 @@
+{
+  "editor.formatOnSave": true,
+  "editor.defaultFormatter": "esbenp.prettier-vscode",
+  "editor.codeActionsOnSave": {
+    "source.fixAll.eslint": "explicit",
+    "source.organizeImports": "explicit"
+  },
+  "editor.tabSize": 2,
+  "editor.insertSpaces": true,
+  "editor.detectIndentation": false,
+  
+  // TypeScript 配置
+  "typescript.updateImportsOnFileMove.enabled": "always",
+  "typescript.suggest.autoImports": true,
+  "typescript.suggest.completeFunctionCalls": true,
+  
+  // ESLint 配置
+  "eslint.workingDirectories": [
+    "./",
+  ],
+  "eslint.validate": [
+    "javascript",
+    "javascriptreact",
+    "typescript",
+    "typescriptreact"
+  ],
+  
+  // Prettier 配置
+  "prettier.configPath": "./.prettierrc",
+  "prettier.requireConfig": true,
+  
+  // 文件关联
+  "files.associations": {
+    "*.tsx": "typescriptreact",
+    "*.ts": "typescript",
+    "*.jsx": "javascriptreact",
+    "*.js": "javascript",
+    "alemon.config.yaml": "yaml",
+    "lvy.config.ts": "typescript",
+    "jsxp.config.tsx": "typescriptreact"
+  },
+  
+  // 搜索排除
+  "search.exclude": {
+    "**/node_modules": true,
+    "**/dist": true,
+    "**/lib": true,
+    "**/yarn.lock": true,
+    "**/package-lock.json": true,
+    "**/*.log": true
+  },
+  
+  // 监视文件排除 (提高性能)
+  "files.watcherExclude": {
+    "**/node_modules/**": true,
+    "**/dist/**": true,
+    "**/lib/**": true,
+    "**/.git/**": true,
+    "**/logs/**": true
+  },
+  
+  // Tailwind CSS 支持
+  "tailwindCSS.includeLanguages": {
+    "typescript": "typescript",
+    "typescriptreact": "typescriptreact"
+  },
+  "tailwindCSS.experimental.classRegex": [
+    ["clsx\\(([^)]*)\\)", "(?:'|\"|`)([^']*)(?:'|\"|`)"],
+    ["className\\s*:\\s*[\"'`]([^\"'`]*)[\"'`]"]
+  ],
+  
+  // 终端配置
+  "terminal.integrated.defaultProfile.osx": "zsh",
+  "terminal.integrated.cwd": "${workspaceFolder}",
+  
+  // Git 配置
+  "git.enableSmartCommit": true,
+  "git.confirmSync": false,
+  "git.autofetch": true,
+  
+  // 错误提示增强
+  "problems.decorations.enabled": true,
+  
+  // 括号配对高亮
+  "editor.bracketPairColorization.enabled": true,
+  "editor.guides.bracketPairs": true,
+  
+  // 代码提示
+  "editor.suggest.snippetsPreventQuickSuggestions": false,
+  "editor.quickSuggestions": {
+    "strings": true
+  },
+  
+  // 自动保存
+  "files.autoSave": "onFocusChange",
+  
+  // 空白字符显示
+  "editor.renderWhitespace": "boundary",
+  
+  // 行号
+  "editor.lineNumbers": "on",
+  
+  // 小地图
+  "editor.minimap.enabled": true,
+  "editor.minimap.scale": 2,
+  
+  // 语言特定设置
+  "[typescript]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "[typescriptreact]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "[javascript]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "[javascriptreact]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "[json]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "[yaml]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "[markdown]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "cSpell.words": [
+    "alemon",
+    "alemongo",
+    "alemonjs",
+    "borderless",
+    "hgetall",
+    "hset",
+    "jsxp",
+    "lpush",
+    "lrange",
+    "ltrim",
+    "lvyjs",
+    "mihoyo",
+    "ningmengchongshui",
+    "onebot",
+    "posthog",
+    "postlog",
+    "qqbot",
+    "sadd",
+    "setex",
+    "smembers",
+    "tttgbnumber",
+    "uids",
+    "xiuxian",
+    "Yunzai"
+  ]
+}
