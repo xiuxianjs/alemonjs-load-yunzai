@@ -253,6 +253,77 @@ function injectGlobals(): void {
     /** 点赞（sendLike） */
     sendLike: (uid: number, times = 10) => callApi('sendLike', { user_id: uid, times }).catch(() => false),
 
+    /** 获取陌生人列表 */
+    getStrangerList: () => callApi('get_stranger_list').catch(() => []),
+
+    /** 重载好友列表 */
+    reloadFriendList: () => botInstance.getFriendList(),
+
+    /** 重载群列表 */
+    reloadGroupList: () => botInstance.getGroupList(),
+
+    /** 重载黑名单 */
+    reloadBlackList: () => callApi('get_blacklist').catch(() => []),
+
+    /** 设置在线状态 */
+    setOnlineStatus: (status: number) => callApi('set_online_status', { status }).catch(() => false),
+
+    /** 设置昵称 */
+    setNickname: (nickname: string) => callApi('set_qq_profile', { nickname }).catch(() => false),
+
+    /** 设置性别 0未知 1男 2女 */
+    setGender: (gender: number) => callApi('set_qq_profile', { gender }).catch(() => false),
+
+    /** 设置生日 */
+    setBirthday: (birthday: string) => callApi('set_qq_profile', { birthday }).catch(() => false),
+
+    /** 设置个人说明 */
+    setDescription: (description: string) => callApi('set_qq_profile', { description }).catch(() => false),
+
+    /** 设置个性签名 */
+    setSignature: (signature: string) => callApi('set_qq_profile', { signature }).catch(() => false),
+
+    /** 设置头像 */
+    setAvatar: (file: any) => callApi('set_qq_avatar', { file: String(file) }).catch(() => false),
+
+    /** 获取个性签名 */
+    getSignature: () => callApi('get_qq_profile')
+        .then((r: any) => r?.data?.signature ?? '')
+        .catch(() => ''),
+
+    /** 图片 OCR */
+    imageOcr: (image: string) => callApi('ocr_image', { image }).catch(() => ({ texts: [], language: '' })),
+
+    /** 获取视频下载地址 */
+    getVideoUrl: (fid: string, md5: string) => callApi('.get_video_url', { fid, md5 }).catch(() => ''),
+
+    /** 获取系统消息（好友申请、群邀请） */
+    getSystemMsg: () => callApi('get_group_system_msg').catch(() => ({ InvitedRequests: [], join_requests: [] })),
+
+    /** 设为精华消息 */
+    setEssenceMessage: (messageId: number) => callApi('set_essence_msg', { message_id: messageId }).catch(() => false),
+
+    /** 移除精华消息 */
+    removeEssenceMessage: (messageId: number) => callApi('delete_essence_msg', { message_id: messageId }).catch(() => false),
+
+    /** 获取漫游表情 */
+    getRoamingStamp: () => callApi('.get_roaming_stamp').catch(() => []),
+
+    /** 删除漫游表情 */
+    deleteStamp: (id: string) => callApi('.delete_stamp', { id }).catch(() => false),
+
+    /** 清理缓存 */
+    cleanCache: () => callApi('clean_cache').catch(() => false),
+
+    /** 创建好友分组 */
+    addClass: (name: string) => callApi('.add_class', { name }).catch(() => false),
+
+    /** 删除好友分组 */
+    deleteClass: (id: number) => callApi('.delete_class', { id }).catch(() => false),
+
+    /** 重命名好友分组 */
+    renameClass: (id: number, name: string) => callApi('.rename_class', { id, name }).catch(() => false),
+
     /**
      * 构造合并转发消息（Bot 级别）
      * ZZZ-Plugin / miao-plugin 使用 Bot.makeForwardMsg(msgs)
@@ -318,6 +389,24 @@ function injectGlobals(): void {
     }),
     music: (type: string, id: any) => ({ type: 'music', data: { type, id } }),
     forward: (resId: string) => ({ type: 'forward', id: resId }),
+    /** 文件消息段 */
+    file: (file: any, name?: string) => ({ type: 'file', file, name: name ?? '' }),
+    /** 位置消息段 */
+    location: (lat: number, lng: number, title?: string, content?: string) => ({
+      type: 'location',
+      data: { lat, lon: lng, title: title ?? '', content: content ?? '' }
+    }),
+    /** 骰子 */
+    dice: (id?: number) => ({ type: 'dice', id: id ?? 0 }),
+    /** 猜拳 */
+    rps: (id?: number) => ({ type: 'rps', id: id ?? 0 }),
+    /** Markdown 消息 */
+    markdown: (content: string) => ({ type: 'markdown', data: { content } }),
+    /** mirai 消息透传 */
+    mirai: (data: string) => ({ type: 'mirai', data }),
+    /** 小表情（已废弃，兼容保留） */
+    bface: (file: string, text?: string) => ({ type: 'bface', file, text: text ?? '' }),
+    sface: (id: number, text?: string) => ({ type: 'sface', id, text: text ?? '' }),
     /** Yunzai polyfill — 按钮消息（多数平台不支持，返回空字符串） */
     button: () => ''
   };
@@ -576,6 +665,14 @@ function makeGroupProxy(groupId: number, opts?: { name?: string; is_owner?: bool
         mute: (duration = 600) => callApi('setGroupBan', { group_id: groupId, user_id: uid, duration }).catch(() => false),
         /** 戳一戳 */
         poke: () => callApi('pokeMember', { group_id: groupId, user_id: uid }).catch(() => false),
+        /** 添加好友 */
+        addFriend: (comment = '') => callApi('_add_friend', { user_id: uid, comment }).catch(() => false),
+        /** 屏蔽该成员消息 */
+        setScreenMsg: (isScreen = true) => callApi('_set_group_screen_msg', {
+            group_id: groupId,
+            user_id: uid,
+            is_screen: isScreen
+          }).catch(() => false),
         getAvatarUrl: () => `https://q1.qlogo.cn/g?b=qq&s=0&nk=${uid}`
       };
     },
@@ -660,7 +757,155 @@ function makeGroupProxy(groupId: number, opts?: { name?: string; is_owner?: bool
     /** 获取群文件 URL（genshin exportLog 抽卡记录导入用） */
     getFileUrl: (fid: string) => callApi('getGroupFileUrl', { group_id: groupId, file_id: fid })
         .then((res: any) => res?.data?.url ?? res?.url ?? '')
-        .catch(() => '')
+        .catch(() => ''),
+
+    /** 群头像 URL */
+    getAvatarUrl: (size: 0 | 40 | 100 | 140 = 0) => `https://p.qlogo.cn/gh/${groupId}/${groupId}/${size || 640}/`,
+
+    /** 刷新群信息 */
+    renew: () => callApi('getGroupInfo', { group_id: groupId, no_cache: true })
+        .then((res: any) => res?.data ?? {})
+        .catch(() => ({})),
+
+    /** 是否全员禁言 */
+    all_muted: false,
+
+    /** 标记消息已读 */
+    markRead: (seq?: number) => callApi('mark_group_msg_as_read', { group_id: groupId, message_seq: seq }).catch(() => {}),
+
+    /** 发送群公告 */
+    announce: (content: string) => callApi('_send_group_notice', { group_id: groupId, content }).catch(() => false),
+
+    /** 设置/取消允许匿名 */
+    allowAnony: (yes = true) => callApi('set_group_anonymous', { group_id: groupId, enable: yes }).catch(() => false),
+
+    /** 设置群备注 */
+    setRemark: (remark = '') => callApi('_set_group_remark', { group_id: groupId, remark }).catch(() => {}),
+
+    /** 禁言匿名用户 */
+    muteAnony: (flag: string, duration = 1800) => callApi('set_group_anonymous_ban', {
+        group_id: groupId,
+        anonymous_flag: flag,
+        duration
+      }).catch(() => {}),
+
+    /** 获取匿名信息 */
+    getAnonyInfo: () => callApi('_get_group_anonymous_info', { group_id: groupId }).catch(() => ({})),
+
+    /** 获取 @全体成员 剩余次数 */
+    getAtAllRemainder: () => callApi('get_group_at_all_remain', { group_id: groupId })
+        .then((res: any) => res?.data?.remain_at_all_count_for_group ?? 0)
+        .catch(() => 0),
+
+    /** 设置精华消息 */
+    addEssence: (seq: number, _rand: number) => callApi('set_essence_msg', { message_id: seq }).catch(() => ''),
+
+    /** 移除精华消息 */
+    removeEssence: (seq: number, _rand: number) => callApi('delete_essence_msg', { message_id: seq }).catch(() => ''),
+
+    /** 发送群文件 */
+    sendFile: (file: any, _pid?: string, name?: string) => callApi('upload_group_file', {
+        group_id: groupId,
+        file: String(file),
+        name: name ?? 'file'
+      }).catch(() => ({})),
+
+    /** 邀请好友入群 */
+    invite: (uid: number) => callApi('_set_group_invite', { group_id: groupId, user_id: uid }).catch(() => false),
+
+    /** 群打卡 */
+    sign: () => callApi('send_group_sign', { group_id: groupId }).catch(() => ({})),
+
+    /** 设置群头像 */
+    setAvatar: (file: any) => callApi('set_group_portrait', { group_id: groupId, file: String(file) }).catch(() => {}),
+
+    /** 屏蔽群成员消息 */
+    setScreenMemberMsg: (memberId: number, isScreen = true) => callApi('_set_group_screen_msg', {
+        group_id: groupId,
+        user_id: memberId,
+        is_screen: isScreen
+      }).catch(() => false),
+
+    /** 获取被禁言成员列表 */
+    getMuteMemberList: () => callApi('_get_group_mute_list', { group_id: groupId })
+        .then((res: any) => res?.data ?? [])
+        .catch(() => []),
+
+    /** 群文件系统 */
+    fs: {
+      /** 获取磁盘空间信息 */
+      df: () => callApi('get_group_file_system_info', { group_id: groupId })
+          .then((res: any) => res?.data ?? {})
+          .catch(() => ({})),
+      /** 获取文件/目录信息 */
+      stat: (fid: string) => callApi('_get_group_file_stat', { group_id: groupId, file_id: fid })
+          .then((res: any) => res?.data ?? {})
+          .catch(() => ({})),
+      /** 列出目录内容 */
+      dir: (pid = '/', start = 0, limit = 100) => callApi('get_group_files_by_folder', {
+          group_id: groupId,
+          folder_id: pid,
+          start,
+          limit
+        })
+          .then((res: any) => [...(res?.data?.files ?? []), ...(res?.data?.folders ?? [])])
+          .catch(() => []),
+      ls: (pid = '/', start = 0, limit = 100) => callApi('get_group_files_by_folder', {
+          group_id: groupId,
+          folder_id: pid,
+          start,
+          limit
+        })
+          .then((res: any) => [...(res?.data?.files ?? []), ...(res?.data?.folders ?? [])])
+          .catch(() => []),
+      /** 创建目录 */
+      mkdir: (name: string) => callApi('create_group_file_folder', {
+          group_id: groupId,
+          name,
+          parent_id: '/'
+        })
+          .then((res: any) => res?.data ?? {})
+          .catch(() => ({})),
+      /** 删除文件/目录 */
+      rm: (fid: string) => callApi('delete_group_file', {
+          group_id: groupId,
+          file_id: fid
+        }).catch(() => {}),
+      /** 重命名 */
+      rename: (fid: string, name: string) => callApi('_rename_group_file', {
+          group_id: groupId,
+          file_id: fid,
+          name
+        }).catch(() => {}),
+      /** 移动文件 */
+      mv: (fid: string, pid: string) => callApi('_move_group_file', {
+          group_id: groupId,
+          file_id: fid,
+          parent_id: pid
+        }).catch(() => {}),
+      /** 上传文件 */
+      upload: (file: any, pid = '/', name?: string) => callApi('upload_group_file', {
+          group_id: groupId,
+          file: String(file),
+          name: name ?? 'file',
+          folder: pid
+        })
+          .then((res: any) => res?.data ?? {})
+          .catch(() => ({})),
+      /** 获取文件下载信息 */
+      download: (fid: string) => callApi('get_group_file_url', {
+          group_id: groupId,
+          file_id: fid
+        })
+          .then((res: any) => res?.data ?? {})
+          .catch(() => ({})),
+      /** 获取根目录文件列表 */
+      get root_files() {
+        return callApi('get_group_root_files', { group_id: groupId })
+          .then((res: any) => [...(res?.data?.files ?? []), ...(res?.data?.folders ?? [])])
+          .catch(() => []);
+      }
+    }
   };
 }
 
@@ -669,10 +914,33 @@ function makeGroupProxy(groupId: number, opts?: { name?: string; is_owner?: bool
  * 通过 callApi 实现真实的私聊操作
  */
 function makeFriendProxy(userId: number, userName: string) {
+  const flInfo = (globalThis as any).Bot?.fl?.get(userId);
+
   return {
     user_id: userId,
-    nickname: userName,
-    remark: userName,
+    nickname: flInfo?.nickname ?? userName,
+    remark: flInfo?.remark ?? userName,
+    /** 好友信息（来自 fl 缓存） */
+    get info() {
+      return (globalThis as any).Bot?.fl?.get(userId);
+    },
+    /** 性别 */
+    get sex() {
+      return flInfo?.sex ?? 'unknown';
+    },
+    /** 好友分组 ID */
+    get class_id() {
+      return flInfo?.class_id ?? 0;
+    },
+    /** 好友分组名称 */
+    get class_name() {
+      return flInfo?.class_name ?? '';
+    },
+
+    /** 转为 Friend 对象（自身） */
+    asFriend: () => makeFriendProxy(userId, userName),
+    /** 转为 Member 对象 */
+    asMember: (gid: number) => makeGroupProxy(gid).pickMember(userId),
 
     /** 发送私聊消息 */
     sendMsg: (msg: any) => {
@@ -684,28 +952,101 @@ function makeFriendProxy(userId: number, userName: string) {
     /** 撤回消息 */
     recallMsg: (messageId: any) => callApi('deleteMsg', { message_id: messageId }).catch(() => false),
 
-    getAvatarUrl: () => `https://q1.qlogo.cn/g?b=qq&s=0&nk=${userId}`,
+    getAvatarUrl: (size: 0 | 40 | 100 | 140 = 0) => `https://q1.qlogo.cn/g?b=qq&s=${size || 640}&nk=${userId}`,
 
     /** 点赞 */
     thumbUp: (times = 10) => callApi('sendLike', { user_id: userId, times }).catch(() => false),
 
     /** 戳一戳（好友） */
-    poke: () => callApi('pokeFriend', { user_id: userId }).catch(() => false),
+    poke: (self = false) => callApi('pokeFriend', { user_id: self ? 0 : userId }).catch(() => false),
 
     /** 获取私聊聊天记录 */
-    getChatHistory: (seq: number, count = 1) => callApi('getChatHistory', { user_id: userId, message_seq: seq, count })
+    getChatHistory: (time?: number, cnt = 20) => callApi('getChatHistory', { user_id: userId, message_seq: time, count: cnt })
         .then((res: any) => res?.data?.messages ?? res?.messages ?? res ?? [])
         .catch(() => []),
 
-    /** 获取私聊文件 URL（exportLog 抽卡记录导入用） */
+    /** 标记消息已读 */
+    markRead: (time?: number) => callApi('mark_private_msg_as_read', { user_id: userId, time }).catch(() => {}),
+
+    /** 获取私聊文件 URL */
     getFileUrl: (fid: string) => callApi('getPrivateFileUrl', { user_id: userId, file_id: fid })
         .then((res: any) => res?.data?.url ?? res?.url ?? '')
         .catch(() => ''),
 
-    /**
-     * 构造合并转发消息（私聊版本）
-     * 同 group.makeForwardMsg，展平为普通消息数组
-     */
+    /** 获取私聊文件详情 */
+    getFileInfo: (fid: string) => callApi('_get_private_file_info', { user_id: userId, file_id: fid })
+        .then((res: any) => res?.data ?? {})
+        .catch(() => ({})),
+
+    /** 发送私聊文件 */
+    sendFile: (file: any, filename?: string) => callApi('upload_private_file', {
+        user_id: userId,
+        file: String(file),
+        name: filename ?? 'file'
+      })
+        .then((res: any) => res?.data?.file_id ?? '')
+        .catch(() => ''),
+
+    /** 撤回私聊文件 */
+    recallFile: (fid: string) => callApi('_recall_private_file', { user_id: userId, file_id: fid }).catch(() => false),
+
+    /** 转发文件到群/好友 */
+    forwardFile: (fid: string, groupId?: number) => callApi('_forward_file', {
+        user_id: userId,
+        file_id: fid,
+        group_id: groupId
+      })
+        .then((res: any) => res?.data?.file_id ?? '')
+        .catch(() => ''),
+
+    /** 删除好友 */
+    delete: (block = false) => callApi('delete_friend', { user_id: userId, block }).catch(() => false),
+
+    /** 设置好友备注 */
+    setRemark: (remark: string) => callApi('_set_friend_remark', { user_id: userId, remark }).catch(() => {}),
+
+    /** 设置好友分组 */
+    setClass: (id: number) => callApi('_set_friend_class', { user_id: userId, class_id: id }).catch(() => {}),
+
+    /** 添加好友回应 */
+    addFriendBack: (seq: number, remark = '') => callApi('setFriendAddRequest', { flag: String(seq), approve: true, remark }).catch(() => false),
+
+    /** 处理好友申请 */
+    setFriendReq: (seq: number, yes = true, remark = '') => callApi('setFriendAddRequest', {
+        flag: String(seq),
+        approve: yes,
+        remark
+      }).catch(() => false),
+
+    /** 处理群申请 */
+    setGroupReq: (_gid: number, seq: number, yes = true, reason = '') => callApi('setGroupAddRequest', {
+        flag: String(seq),
+        approve: yes,
+        reason,
+        type: 'add'
+      }).catch(() => false),
+
+    /** 处理群邀请 */
+    setGroupInvite: (_gid: number, seq: number, yes = true) => callApi('setGroupAddRequest', {
+        flag: String(seq),
+        approve: yes,
+        type: 'invite'
+      }).catch(() => false),
+
+    /** 获取简要信息 */
+    getSimpleInfo: () => callApi('getStrangerInfo', { user_id: userId })
+        .then((res: any) => res?.data ?? {})
+        .catch(() => ({})),
+
+    /** 获取添加好友设置 */
+    getAddFriendSetting: () => callApi('_get_add_friend_setting', { user_id: userId })
+        .then((res: any) => res?.data ?? 0)
+        .catch(() => 0),
+
+    /** 查找共同群 */
+    searchSameGroup: () => callApi('_search_same_group', { user_id: userId })
+        .then((res: any) => res?.data ?? [])
+        .catch(() => []),
     makeForwardMsg: (nodes: any[]) => {
       if (!Array.isArray(nodes) || nodes.length === 0) {
         return [];

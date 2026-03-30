@@ -603,8 +603,7 @@ async function dispatchApi(action: string, params: Record<string, any>): Promise
       });
     }
 
-    case 'getGroupFileUrl':
-    case 'getPrivateFileUrl': {
+    case 'getGroupFileUrl': {
       const event = getEventForApi(params.platform);
 
       if (!event) {
@@ -618,12 +617,48 @@ async function dispatchApi(action: string, params: Record<string, any>): Promise
 
       return await client.send({
         action: 'get_group_file_url',
-        params: { group_id: Number(params.group_id ?? 0), file_id: String(params.file_id) }
+        params: { group_id: Number(params.group_id), file_id: String(params.file_id) }
       });
     }
 
-    default:
-      throw new Error(`不支持的 API: ${action}`);
+    case 'getPrivateFileUrl': {
+      const event = getEventForApi(params.platform);
+
+      if (!event) {
+        throw new Error('无可用事件上下文');
+      }
+      const client = getOneBotClient(event);
+
+      if (!client) {
+        return { url: '' };
+      }
+
+      return await client.send({
+        action: 'get_private_file_url',
+        params: { user_id: Number(params.user_id), file_id: String(params.file_id) }
+      });
+    }
+
+    default: {
+      // ── 通用 OneBot API 透传 ──
+      // 所有未显式处理的 API 直接转发给 OneBot 客户端
+      // 覆盖 set_group_essence_msg / ocr_image / upload_group_file 等全部扩展 API
+      const event = getEventForApi(params.platform);
+
+      if (!event) {
+        throw new Error(`无可用事件上下文: ${action}`);
+      }
+      const client = getOneBotClient(event);
+
+      if (!client) {
+        throw new Error(`${action} 仅 OneBot 平台可用`);
+      }
+
+      // 移除内部使用的 platform 字段，避免传给 OneBot
+      const { platform: _p, ...apiParams } = params;
+
+      return await client.send({ action, params: apiParams });
+    }
   }
 }
 
