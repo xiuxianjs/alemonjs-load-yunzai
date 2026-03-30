@@ -49,6 +49,9 @@ export interface IPCReply {
     id: string;
     replyId: string;
     contents: ReplyContent[];
+    channelId?: string;
+    userId?: string;
+    isPrivate?: boolean;
 }
 export interface IPCError {
     type: 'error';
