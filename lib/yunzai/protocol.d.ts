@@ -8,6 +8,7 @@ export interface IPCEventMessage {
     type: 'event';
     id: string;
     data: {
+        eventName: string;
         platform: string;
         botId: string;
         messageText: string;

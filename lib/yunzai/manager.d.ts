@@ -1,3 +1,4 @@
+import type { PluginInfo } from '../path';
 import type { IPCReply, ParentToWorker } from './protocol';
 type ReplyHandler = (reply: IPCReply) => void;
 declare class YunzaiManager {
@@ -8,24 +9,38 @@ declare class YunzaiManager {
     private restartCount;
     private maxRestarts;
     private restartTimer;
+    private taskName;
+    private taskProcess;
+    private taskCancelled;
     get isInstalled(): boolean;
     get isRunning(): boolean;
     get isReady(): boolean;
     getStatus(): string;
+    get isBusy(): boolean;
+    get busyTaskName(): string;
+    cancelTask(): boolean;
     install(repoUrl?: string): Promise<void>;
     update(): Promise<string>;
+    updateAll(): Promise<string>;
     start(): Promise<void>;
     stop(): Promise<void>;
     restart(): Promise<void>;
+    installAndStart(repoUrl?: string): Promise<void>;
+    uninstall(): Promise<void>;
+    private startInternal;
+    private stopInternal;
     send(msg: ParentToWorker): void;
     onReply(handler: ReplyHandler): () => void;
     onDone(handler: (done: any) => void): () => void;
     private handleMessage;
+    private beginTask;
+    private endTask;
+    private throwIfCancelled;
     private git;
     private npmInstall;
+    installPlugin(plugin: PluginInfo): Promise<void>;
     installDeps(): Promise<string>;
     private ensureWorkspaces;
-    private ensureMiaoPlugin;
 }
 export declare const manager: YunzaiManager;
 export {};
