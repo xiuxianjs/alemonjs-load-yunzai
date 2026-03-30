@@ -28,13 +28,18 @@ export default defineChildren({
   async onCreated() {
     logger.info('[alemonjs-load-yunzai] 启动');
     if (manager.isInstalled) {
+      if (!manager.lastStartOk) {
+        logger.warn('[Yunzai] 上次启动失败，跳过自动启动。请排查问题后发送 #yz启动');
+
+        return;
+      }
       try {
         await manager.start();
       } catch (err: any) {
         logger.error(`[Yunzai] Worker 启动失败: ${err?.message}`);
       }
     } else {
-      logger.info('[Yunzai] 未安装。发送 #yz安装 进行安装');
+      logger.info('[Yunzai] 未安装。发送 #yz安装 安装机器人，安装后可通过 #yz安装<插件名> 添加插件');
     }
   }
 });

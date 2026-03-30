@@ -75,6 +75,7 @@ const REPLY_MAX_TIMEOUT = 120_000;
 let idCounter = 0;
 let listenerBound = false;
 let doneListenerBound = false;
+let exitListenerBound = false;
 
 /** 绑定 Worker 回复监听（仅一次） */
 function bindReplyListener(): void {
@@ -120,7 +121,7 @@ function bindReplyListener(): void {
   });
 }
 
-/** 清理 pending 条目及其所有定时器 */
+/** 清理 pending 条目及其所有定时器，同时清理关联的 msgEvents */
 function cleanPending(id: string): void {
   const ctx = pending.get(id);
 
@@ -130,6 +131,7 @@ function cleanPending(id: string): void {
   clearTimeout(ctx.timer);
   clearTimeout(ctx.maxTimer);
   pending.delete(id);
+  msgEvents.delete(id);
 }
 
 /** 绑定 Worker done 监听（仅一次） */
@@ -152,6 +154,22 @@ function bindDoneListener(): void {
     }
     // 有 reply 的情况：保留 pending 等待滑动窗口超时
     // （插件的 reply 和 done 可能交错到达）
+  });
+}
+
+/** 绑定 Worker 退出监听 — 批量清理所有 pending 和 msgEvents，防泄漏（仅一次） */
+function bindExitListener(): void {
+  if (exitListenerBound) {
+    return;
+  }
+  exitListenerBound = true;
+
+  manager.onWorkerExit(() => {
+    // Worker 崩溃/退出 → 所有未完成的 pending 不可能再收到 reply/done
+    for (const id of pending.keys()) {
+      cleanPending(id);
+    }
+    logger.debug(`[bridge] Worker 退出，已清理 pending=${pending.size} msgEvents=${msgEvents.size}`);
   });
 }
 
@@ -209,10 +227,18 @@ function contentsToFormat(contents: ReplyContent[]): InstanceType<typeof Format>
 // ━━━━━━━━━━━ 平台事件存储 & API 请求处理 ━━━━━━━━━━━
 
 /**
- * 每个平台最近的 AlemonJS 事件引用
- * 用于 Worker 发起 API 调用时提供事件上下文
+ * 按消息 ID 精确关联的事件引用（处理中的消息）
+ * Worker 发起 API 请求时携带 msgId，优先从此 Map 查找
  */
-const latestEvents = new Map<string, EventsEnum>();
+const msgEvents = new Map<string, EventsEnum>();
+
+/**
+ * 每个平台最近的 AlemonJS 事件引用（fallback）
+ * 仅在 msgId 查找失败时（如定时任务触发）使用
+ * 带 TTL：超过 10 分钟未更新的平台事件视为过期，避免引用已断开连接的平台
+ */
+const LATEST_EVENT_TTL = 10 * 60_000; // 10 分钟
+const latestEvents = new Map<string, { event: EventsEnum; time: number }>();
 
 let apiListenerBound = false;
 
@@ -227,7 +253,7 @@ function bindApiRequestListener(): void {
   void loadOneBotClient();
 
   manager.onApiRequest((req: IPCApiRequest) => {
-    void handleApiRequest(req);
+    void handleApiRequest(req, req.msgId);
   });
 }
 
@@ -238,11 +264,11 @@ function bindApiRequestListener(): void {
  * - OneBot 平台：通过 AlemonJS → OneBot 适配器 → icqq 完整 API
  * - 其他平台：通过 AlemonJS 标准化接口降级适配
  */
-async function handleApiRequest(req: IPCApiRequest): Promise<void> {
+async function handleApiRequest(req: IPCApiRequest, msgId?: string): Promise<void> {
   const { reqId, action, params } = req;
 
   try {
-    const result = await dispatchApi(action, params);
+    const result = await dispatchApi(action, params, msgId);
 
     manager.sendToWorker({ type: 'api_response', reqId, ok: true, data: result });
   } catch (err: any) {
@@ -256,7 +282,10 @@ async function handleApiRequest(req: IPCApiRequest): Promise<void> {
  * 优先使用 sendToChannel / sendToUser（无需事件上下文）
  * 成员操作等需要事件上下文的，从 latestEvents 获取
  */
-async function dispatchApi(action: string, params: Record<string, any>): Promise<any> {
+async function dispatchApi(action: string, params: Record<string, any>, msgId?: string): Promise<any> {
+  // 覆盖 getEventForApi，优先使用 msgId 精确关联的事件
+  const getEvent = (platform?: string) => getEventForApi(platform, msgId);
+
   switch (action) {
     // ─── 消息发送（不需要事件上下文） ───
 
@@ -275,7 +304,7 @@ async function dispatchApi(action: string, params: Record<string, any>): Promise
     // ─── 消息操作（需要事件上下文） ───
 
     case 'deleteMsg': {
-      const event = getEventForApi(params.platform);
+      const event = getEvent(params.platform);
 
       if (!event) {
         throw new Error('无可用事件上下文');
@@ -288,7 +317,7 @@ async function dispatchApi(action: string, params: Record<string, any>): Promise
     // ─── 群成员操作 ───
 
     case 'getGroupMemberList': {
-      const event = getEventForApi(params.platform);
+      const event = getEvent(params.platform);
 
       if (!event) {
         throw new Error('无可用事件上下文');
@@ -299,7 +328,7 @@ async function dispatchApi(action: string, params: Record<string, any>): Promise
     }
 
     case 'getGroupMemberInfo': {
-      const event = getEventForApi(params.platform);
+      const event = getEvent(params.platform);
 
       if (!event) {
         throw new Error('无可用事件上下文');
@@ -310,7 +339,7 @@ async function dispatchApi(action: string, params: Record<string, any>): Promise
     }
 
     case 'setGroupKick': {
-      const event = getEventForApi(params.platform);
+      const event = getEvent(params.platform);
 
       if (!event) {
         throw new Error('无可用事件上下文');
@@ -321,7 +350,7 @@ async function dispatchApi(action: string, params: Record<string, any>): Promise
     }
 
     case 'setGroupBan': {
-      const event = getEventForApi(params.platform);
+      const event = getEvent(params.platform);
 
       if (!event) {
         throw new Error('无可用事件上下文');
@@ -332,7 +361,7 @@ async function dispatchApi(action: string, params: Record<string, any>): Promise
     }
 
     case 'setGroupCard': {
-      const event = getEventForApi(params.platform);
+      const event = getEvent(params.platform);
 
       if (!event) {
         throw new Error('无可用事件上下文');
@@ -343,7 +372,7 @@ async function dispatchApi(action: string, params: Record<string, any>): Promise
     }
 
     case 'setGroupAdmin': {
-      const event = getEventForApi(params.platform);
+      const event = getEvent(params.platform);
 
       if (!event) {
         throw new Error('无可用事件上下文');
@@ -354,7 +383,7 @@ async function dispatchApi(action: string, params: Record<string, any>): Promise
     }
 
     case 'setGroupSpecialTitle': {
-      const event = getEventForApi(params.platform);
+      const event = getEvent(params.platform);
 
       if (!event) {
         throw new Error('无可用事件上下文');
@@ -367,7 +396,7 @@ async function dispatchApi(action: string, params: Record<string, any>): Promise
     // ─── 群操作 ───
 
     case 'getGroupInfo': {
-      const event = getEventForApi(params.platform);
+      const event = getEvent(params.platform);
 
       if (!event) {
         throw new Error('无可用事件上下文');
@@ -378,7 +407,7 @@ async function dispatchApi(action: string, params: Record<string, any>): Promise
     }
 
     case 'getGroupList': {
-      const event = getEventForApi(params.platform);
+      const event = getEvent(params.platform);
 
       if (!event) {
         throw new Error('无可用事件上下文');
@@ -389,7 +418,7 @@ async function dispatchApi(action: string, params: Record<string, any>): Promise
     }
 
     case 'setGroupLeave': {
-      const event = getEventForApi(params.platform);
+      const event = getEvent(params.platform);
 
       if (!event) {
         throw new Error('无可用事件上下文');
@@ -400,7 +429,7 @@ async function dispatchApi(action: string, params: Record<string, any>): Promise
     }
 
     case 'setGroupName': {
-      const event = getEventForApi(params.platform);
+      const event = getEvent(params.platform);
 
       if (!event) {
         throw new Error('无可用事件上下文');
@@ -411,7 +440,7 @@ async function dispatchApi(action: string, params: Record<string, any>): Promise
     }
 
     case 'setGroupWholeBan': {
-      const event = getEventForApi(params.platform);
+      const event = getEvent(params.platform);
 
       if (!event) {
         throw new Error('无可用事件上下文');
@@ -467,7 +496,7 @@ async function dispatchApi(action: string, params: Record<string, any>): Promise
     // ─── OneBot 特有 API（需要原生 WebSocket 客户端） ───
 
     case 'sendLike': {
-      const event = getEventForApi(params.platform);
+      const event = getEvent(params.platform);
 
       if (!event) {
         throw new Error('无可用事件上下文');
@@ -482,7 +511,7 @@ async function dispatchApi(action: string, params: Record<string, any>): Promise
     }
 
     case 'pokeMember': {
-      const event = getEventForApi(params.platform);
+      const event = getEvent(params.platform);
 
       if (!event) {
         throw new Error('无可用事件上下文');
@@ -500,7 +529,7 @@ async function dispatchApi(action: string, params: Record<string, any>): Promise
     }
 
     case 'pokeFriend': {
-      const event = getEventForApi(params.platform);
+      const event = getEvent(params.platform);
 
       if (!event) {
         throw new Error('无可用事件上下文');
@@ -518,7 +547,7 @@ async function dispatchApi(action: string, params: Record<string, any>): Promise
     }
 
     case 'getCookies': {
-      const event = getEventForApi(params.platform);
+      const event = getEvent(params.platform);
 
       if (!event) {
         throw new Error('无可用事件上下文');
@@ -533,7 +562,7 @@ async function dispatchApi(action: string, params: Record<string, any>): Promise
     }
 
     case 'getCsrfToken': {
-      const event = getEventForApi(params.platform);
+      const event = getEvent(params.platform);
 
       if (!event) {
         throw new Error('无可用事件上下文');
@@ -548,7 +577,7 @@ async function dispatchApi(action: string, params: Record<string, any>): Promise
     }
 
     case 'getMsg': {
-      const event = getEventForApi(params.platform);
+      const event = getEvent(params.platform);
 
       if (!event) {
         throw new Error('无可用事件上下文');
@@ -563,7 +592,7 @@ async function dispatchApi(action: string, params: Record<string, any>): Promise
     }
 
     case 'getForwardMsg': {
-      const event = getEventForApi(params.platform);
+      const event = getEvent(params.platform);
 
       if (!event) {
         throw new Error('无可用事件上下文');
@@ -578,7 +607,7 @@ async function dispatchApi(action: string, params: Record<string, any>): Promise
     }
 
     case 'getChatHistory': {
-      const event = getEventForApi(params.platform);
+      const event = getEvent(params.platform);
 
       if (!event) {
         throw new Error('无可用事件上下文');
@@ -604,7 +633,7 @@ async function dispatchApi(action: string, params: Record<string, any>): Promise
     }
 
     case 'getGroupFileUrl': {
-      const event = getEventForApi(params.platform);
+      const event = getEvent(params.platform);
 
       if (!event) {
         throw new Error('无可用事件上下文');
@@ -622,7 +651,7 @@ async function dispatchApi(action: string, params: Record<string, any>): Promise
     }
 
     case 'getPrivateFileUrl': {
-      const event = getEventForApi(params.platform);
+      const event = getEvent(params.platform);
 
       if (!event) {
         throw new Error('无可用事件上下文');
@@ -643,7 +672,7 @@ async function dispatchApi(action: string, params: Record<string, any>): Promise
       // ── 通用 OneBot API 透传 ──
       // 所有未显式处理的 API 直接转发给 OneBot 客户端
       // 覆盖 set_group_essence_msg / ocr_image / upload_group_file 等全部扩展 API
-      const event = getEventForApi(params.platform);
+      const event = getEvent(params.platform);
 
       if (!event) {
         throw new Error(`无可用事件上下文: ${action}`);
@@ -662,14 +691,31 @@ async function dispatchApi(action: string, params: Record<string, any>): Promise
   }
 }
 
-/** 获取指定平台的最新事件上下文，用于 API 调用 */
-function getEventForApi(platform?: string): EventsEnum | undefined {
-  if (platform && latestEvents.has(platform)) {
-    return latestEvents.get(platform);
+/** 获取指定平台的事件上下文，优先按 msgId 精确匹配 */
+function getEventForApi(platform?: string, msgId?: string): EventsEnum | undefined {
+  // 优先按 msgId 精确查找（避免同平台并发消息上下文错乱）
+  if (msgId && msgEvents.has(msgId)) {
+    return msgEvents.get(msgId);
   }
-  // 没指定平台或找不到 → 取任意一个可用事件
-  if (latestEvents.size > 0) {
-    return latestEvents.values().next().value;
+
+  const now = Date.now();
+
+  // fallback: 按平台取最新事件（定时任务等无 msgId 场景）
+  if (platform && latestEvents.has(platform)) {
+    const entry = latestEvents.get(platform)!;
+
+    if (now - entry.time < LATEST_EVENT_TTL) {
+      return entry.event;
+    }
+    // 超过 TTL → 移除过期条目
+    latestEvents.delete(platform);
+  }
+  // 兆底: 取任意一个未过期的可用事件
+  for (const [key, entry] of latestEvents) {
+    if (now - entry.time < LATEST_EVENT_TTL) {
+      return entry.event;
+    }
+    latestEvents.delete(key);
   }
 
   return undefined;
@@ -732,13 +778,17 @@ export default (e: EventsEnum, next: Next) => {
   bindReplyListener();
   bindDoneListener();
   bindApiRequestListener();
+  bindExitListener();
 
-  // 存储最新事件（供 Worker API 调用时使用）
+  // 存储最新事件（供 Worker API 调用时使用，带时间戳用于 TTL 过期）
   if (e.Platform) {
-    latestEvents.set(e.Platform, e);
+    latestEvents.set(e.Platform, { event: e, time: Date.now() });
   }
 
   const id = `msg_${++idCounter}_${Date.now()}`;
+
+  // 按 msgId 精确存储事件引用（解决同平台并发消息上下文错乱）
+  msgEvents.set(id, e);
 
   // 为所有事件设置回复上下文
   // useMessage 内部仅检查 event 是对象，平台适配器决定能否实际发送

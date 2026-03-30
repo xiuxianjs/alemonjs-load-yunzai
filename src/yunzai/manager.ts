@@ -18,12 +18,18 @@ import type { IPCApiRequest, IPCReply, ParentToWorker, WorkerToParent } from './
 type ReplyHandler = (reply: IPCReply) => void;
 type ApiRequestHandler = (req: IPCApiRequest) => void;
 
+/** 启动失败标记文件路径（存在 = 上次反复崩溃） */
+function getStartFailedPath(): string {
+  return join(getYunzaiDir(), '.last_start_failed');
+}
+
 class YunzaiManager {
   private worker: ChildProcess | null = null;
   private ready = false;
   private replyHandlers = new Set<ReplyHandler>();
   private doneHandlers = new Set<(done: any) => void>();
   private apiRequestHandlers = new Set<ApiRequestHandler>();
+  private exitHandlers = new Set<(code: number | null) => void>();
   private restartCount = 0;
   private maxRestarts = 3;
   private restartTimer: ReturnType<typeof setTimeout> | null = null;
@@ -74,6 +80,35 @@ class YunzaiManager {
   /** 当前任务名称 */
   get busyTaskName(): string {
     return this.taskName ?? '';
+  }
+
+  /**
+   * 上次启动是否成功
+   * 用于决定 onCreated 是否自动启动：如果上次反复崩溃则跳过
+   * 首次安装（无标记文件）视为可启动
+   */
+  get lastStartOk(): boolean {
+    try {
+      return !existsSync(getStartFailedPath());
+    } catch {
+      return true;
+    }
+  }
+
+  /** 标记启动成功（移除失败标记） */
+  private markStartOk(): void {
+    try {
+      if (existsSync(getStartFailedPath())) {
+        rmSync(getStartFailedPath());
+      }
+    } catch {}
+  }
+
+  /** 标记启动失败（写入失败标记） */
+  private markStartFailed(): void {
+    try {
+      writeFileSync(getStartFailedPath(), String(Date.now()), 'utf-8');
+    } catch {}
   }
 
   /** 取消当前正在执行的任务 */
@@ -348,6 +383,13 @@ class YunzaiManager {
       this.worker = null;
       this.ready = false;
 
+      // 通知所有退出监听器（bridge 用于清理 pending）
+      for (const h of this.exitHandlers) {
+        try {
+          h(code);
+        } catch {}
+      }
+
       if (code !== 0 && this.restartCount < this.maxRestarts && !this.isBusy) {
         this.restartCount++;
         logger.info(`[Yunzai] 自动重启 (${this.restartCount}/${this.maxRestarts})...`);
@@ -357,6 +399,10 @@ class YunzaiManager {
             logger.error(`[Yunzai] 自动重启失败: ${err.message}`);
           });
         }, 3000);
+      } else if (code !== 0 && this.restartCount >= this.maxRestarts) {
+        // 自动重启耗尽 → 标记失败，下次启动不自动启动
+        this.markStartFailed();
+        logger.error('[Yunzai] 自动重启次数耗尽，下次启动将不会自动启动。请排查问题后发送 #yz启动');
       }
     });
 
@@ -372,6 +418,7 @@ class YunzaiManager {
           cleanup();
           this.ready = true;
           this.restartCount = 0;
+          this.markStartOk();
           logger.info(`[Yunzai] Worker 就绪，已加载 ${msg.pluginCount} 个插件`);
           resolve();
         } else if (msg.type === 'error') {
@@ -457,6 +504,13 @@ class YunzaiManager {
     this.apiRequestHandlers.add(handler);
 
     return () => this.apiRequestHandlers.delete(handler);
+  }
+
+  /** 注册 Worker 退出处理器（用于清理 pending 状态） */
+  onWorkerExit(handler: (code: number | null) => void): () => void {
+    this.exitHandlers.add(handler);
+
+    return () => this.exitHandlers.delete(handler);
   }
 
   /** 发送任意消息给 Worker（用于 API 响应等） */

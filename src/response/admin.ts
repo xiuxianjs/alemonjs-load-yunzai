@@ -68,7 +68,7 @@ export default async (e: EventsEnum, next: Next) => {
     if (cmd.startsWith('安装依赖')) {
       reply('正在安装 Yunzai 依赖（含插件子包）...');
       await manager.installDeps();
-      reply('依赖安装完成，建议 #yz重启');
+      reply('依赖安装完成。如需生效请发送 #yz重启');
     } else if (cmd.startsWith('安装')) {
       const arg = cmd.replace('安装', '').trim();
       const plugin = arg ? getPluginInfo(arg) : undefined;
@@ -76,13 +76,13 @@ export default async (e: EventsEnum, next: Next) => {
       if (plugin) {
         reply(`正在安装插件 ${plugin.label}...`);
         await manager.installPlugin(plugin);
-        reply(`${plugin.label} 安装完成，建议 #yz重启`);
+        reply(`${plugin.label} 安装完成（含依赖）。如需生效请发送 #yz重启`);
       } else {
         const repo = arg || getDefaultRepo();
 
         reply(isQQBot ? '正在安装 Yunzai...' : `正在安装 Yunzai...\n仓库: ${repo}`);
-        await manager.installAndStart(repo);
-        reply('Yunzai 安装完成并已启动');
+        await manager.install(repo);
+        reply('Yunzai 安装完成（含依赖）。发送 #yz启动 启动 Yunzai');
       }
     } else if (cmd.startsWith('更新')) {
       reply('正在更新 Yunzai...');

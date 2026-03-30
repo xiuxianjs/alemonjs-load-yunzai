@@ -32,6 +32,9 @@ let apiIdCounter = 0;
 /** 当前正在处理的事件平台（用于 API 调用路由） */
 let currentPlatform = '';
 
+/** 当前正在处理的消息 ID（用于 API 调用精确关联事件上下文） */
+let currentMsgId = '';
+
 /** 历史已知平台（定时任务触发时 currentPlatform 可能为空，使用此 fallback） */
 let defaultPlatform = '';
 
@@ -83,7 +86,7 @@ function callApi(action: string, params: Record<string, any> = {}, timeout = 15_
       }
     });
 
-    ipcSend({ type: 'api', reqId, action, params });
+    ipcSend({ type: 'api', reqId, action, params, msgId: currentMsgId || undefined });
   });
 }
 
@@ -164,15 +167,15 @@ function injectGlobals(): void {
     pickMember: (gid: number, uid: number) => makeGroupProxy(gid).pickMember(uid),
 
     /** 发送群消息（部分插件直接调用 Bot.sendGroupMsg） */
-    sendGroupMsg: (gid: number, msg: any) => {
-      const contents = serializeReply(msg);
+    sendGroupMsg: async (gid: number, msg: any) => {
+      const contents = await serializeReply(msg);
 
       return callApi('sendGroupMsg', { group_id: gid, contents }).catch(() => ({}));
     },
 
     /** 发送私聊消息 */
-    sendPrivateMsg: (uid: number, msg: any) => {
-      const contents = serializeReply(msg);
+    sendPrivateMsg: async (uid: number, msg: any) => {
+      const contents = await serializeReply(msg);
 
       return callApi('sendPrivateMsg', { user_id: uid, contents }).catch(() => ({}));
     },
@@ -329,32 +332,7 @@ function injectGlobals(): void {
      * ZZZ-Plugin / miao-plugin 使用 Bot.makeForwardMsg(msgs)
      * 展平节点为普通消息段数组
      */
-    makeForwardMsg: (msgs: any[]) => {
-      if (!Array.isArray(msgs) || msgs.length === 0) {
-        return [];
-      }
-      const parts: any[] = [];
-
-      for (const node of msgs) {
-        const msg = node.message ?? node;
-        const nickname = node.nickname ?? '';
-
-        if (nickname) {
-          parts.push({ type: 'text', text: `【${nickname}】\n` });
-        }
-        if (typeof msg === 'string') {
-          parts.push({ type: 'text', text: msg + '\n' });
-        } else if (Array.isArray(msg)) {
-          parts.push(...msg);
-          parts.push({ type: 'text', text: '\n' });
-        } else if (msg && typeof msg === 'object') {
-          parts.push(msg);
-          parts.push({ type: 'text', text: '\n' });
-        }
-      }
-
-      return parts;
-    }
+    makeForwardMsg: (msgs: any[]) => buildForwardMsgParts(msgs)
   };
 
   g.Bot = new Proxy(botInstance, {
@@ -412,9 +390,42 @@ function injectGlobals(): void {
   };
 }
 
+// ━━━━━━━━━━━━━━━ 合并转发消息构建 ━━━━━━━━━━━━━━━
+
+/**
+ * 将转发消息节点展平为普通消息段数组
+ * 无法创建真实 QQ 转发卡片时 → 展平为文本+媒体消息
+ */
+function buildForwardMsgParts(nodes: any[]): any[] {
+  if (!Array.isArray(nodes) || nodes.length === 0) {
+    return [];
+  }
+  const parts: any[] = [];
+
+  for (const node of nodes) {
+    const msg = node.message ?? node;
+    const nickname = node.nickname ?? '';
+
+    if (nickname) {
+      parts.push({ type: 'text', text: `【${nickname}】\n` });
+    }
+    if (typeof msg === 'string') {
+      parts.push({ type: 'text', text: msg + '\n' });
+    } else if (Array.isArray(msg)) {
+      parts.push(...msg);
+      parts.push({ type: 'text', text: '\n' });
+    } else if (msg && typeof msg === 'object') {
+      parts.push(msg);
+      parts.push({ type: 'text', text: '\n' });
+    }
+  }
+
+  return parts;
+}
+
 // ━━━━━━━━━━━━━━━ 消息序列化 ━━━━━━━━━━━━━━━
 
-function serializeReply(msg: any): ReplyContent[] {
+async function serializeReply(msg: any): Promise<ReplyContent[]> {
   if (typeof msg === 'string') {
     return [{ type: 'text', data: msg }];
   }
@@ -422,7 +433,9 @@ function serializeReply(msg: any): ReplyContent[] {
     return [{ type: 'image', data: msg.toString('base64') }];
   }
   if (Array.isArray(msg)) {
-    return msg.flatMap(serializeReply);
+    const results = await Promise.all(msg.map(serializeReply));
+
+    return results.flat();
   }
   if (msg && typeof msg === 'object') {
     switch (msg.type) {
@@ -434,20 +447,20 @@ function serializeReply(msg: any): ReplyContent[] {
         } else {
           const filePath = String(msg.file);
 
-          // file:// 路径 → 读取本地文件转 base64（Worker 与父进程 cwd 可能不同）
+          // file:// 路径 → 异步读取本地文件转 base64（避免阻塞事件循环）
           if (filePath.startsWith('file://')) {
             try {
               const absPath = filePath.replace(/^file:\/\//, '');
-              const buf = fs.readFileSync(absPath);
+              const buf = await fs.promises.readFile(absPath);
 
               file = buf.toString('base64');
             } catch {
               file = filePath; // 读取失败回退原始路径
             }
           } else if (filePath.startsWith('/') && !filePath.startsWith('http')) {
-            // 绝对路径（非 URL）→ 尝试读取文件
+            // 绝对路径（非 URL）→ 异步读取文件
             try {
-              const buf = fs.readFileSync(filePath);
+              const buf = await fs.promises.readFile(filePath);
 
               file = buf.toString('base64');
             } catch {
@@ -563,8 +576,36 @@ function safeInt(v: any, fallback: number): number {
 /**
  * 群成员信息缓存（群号 → (用户号 → 成员信息)）
  * pickMember 优先返回缓存数据，支持 Yunzai 同步访问 .card / .nickname
+ *
+ * LRU 策略：
+ * - 最多缓存 MAX_CACHED_GROUPS 个群的成员数据
+ * - 超出时淘汰最久未访问的群
  */
+const MAX_CACHED_GROUPS = 50;
 const memberCache = new Map<number, Map<number, any>>();
+/** 群缓存最近访问时间（用于 LRU 淘汰） */
+const memberCacheAccess = new Map<number, number>();
+
+/** 访问/更新群缓存时刷新时间戳，超出上限时淘汰最旧条目 */
+function touchMemberCache(groupId: number): void {
+  memberCacheAccess.set(groupId, Date.now());
+
+  if (memberCache.size > MAX_CACHED_GROUPS) {
+    let oldestId = -1;
+    let oldestTime = Infinity;
+
+    for (const [gid, time] of memberCacheAccess) {
+      if (time < oldestTime) {
+        oldestTime = time;
+        oldestId = gid;
+      }
+    }
+    if (oldestId >= 0) {
+      memberCache.delete(oldestId);
+      memberCacheAccess.delete(oldestId);
+    }
+  }
+}
 
 /**
  * 创建 e.group 代理对象
@@ -583,8 +624,8 @@ function makeGroupProxy(groupId: number, opts?: { name?: string; is_owner?: bool
     mute_left: 0,
 
     /** 发送群消息 */
-    sendMsg: (msg: any) => {
-      const contents = serializeReply(msg);
+    sendMsg: async (msg: any) => {
+      const contents = await serializeReply(msg);
 
       return callApi('sendGroupMsg', { group_id: groupId, contents }).catch(() => ({}));
     },
@@ -600,6 +641,7 @@ function makeGroupProxy(groupId: number, opts?: { name?: string; is_owner?: bool
             }
           }
           memberCache.set(groupId, map);
+          touchMemberCache(groupId);
 
           return map;
         })
@@ -633,6 +675,7 @@ function makeGroupProxy(groupId: number, opts?: { name?: string; is_owner?: bool
                 memberCache.set(groupId, new Map());
               }
               memberCache.get(groupId)!.set(uid, res.data);
+              touchMemberCache(groupId);
             }
 
             return res?.data ?? cached ?? {};
@@ -646,6 +689,7 @@ function makeGroupProxy(groupId: number, opts?: { name?: string; is_owner?: bool
                   memberCache.set(groupId, new Map());
                 }
                 memberCache.get(groupId)!.set(uid, res.data);
+                touchMemberCache(groupId);
 
                 return res.data;
               }
@@ -712,33 +756,7 @@ function makeGroupProxy(groupId: number, opts?: { name?: string; is_owner?: bool
      * 接受 [{user_id, nickname, message}, ...] 节点数组
      * 无法创建真实 QQ 转发卡片时 → 将内容展平为普通消息数组，仍可正常 reply
      */
-    makeForwardMsg: (nodes: any[]) => {
-      if (!Array.isArray(nodes) || nodes.length === 0) {
-        return [];
-      }
-      // 展平所有节点消息为一条合并文本+媒体消息
-      const parts: any[] = [];
-
-      for (const node of nodes) {
-        const msg = node.message ?? node;
-        const nickname = node.nickname ?? '';
-
-        if (nickname) {
-          parts.push({ type: 'text', text: `【${nickname}】\n` });
-        }
-        if (typeof msg === 'string') {
-          parts.push({ type: 'text', text: msg + '\n' });
-        } else if (Array.isArray(msg)) {
-          parts.push(...msg);
-          parts.push({ type: 'text', text: '\n' });
-        } else if (msg && typeof msg === 'object') {
-          parts.push(msg);
-          parts.push({ type: 'text', text: '\n' });
-        }
-      }
-
-      return parts;
-    },
+    makeForwardMsg: (nodes: any[]) => buildForwardMsgParts(nodes),
 
     /** 获取群信息（兼容部分插件调用 e.group.getInfo()） */
     getInfo: () => callApi('getGroupInfo', { group_id: groupId })
@@ -943,8 +961,8 @@ function makeFriendProxy(userId: number, userName: string) {
     asMember: (gid: number) => makeGroupProxy(gid).pickMember(userId),
 
     /** 发送私聊消息 */
-    sendMsg: (msg: any) => {
-      const contents = serializeReply(msg);
+    sendMsg: async (msg: any) => {
+      const contents = await serializeReply(msg);
 
       return callApi('sendPrivateMsg', { user_id: userId, contents }).catch(() => ({}));
     },
@@ -1047,32 +1065,7 @@ function makeFriendProxy(userId: number, userName: string) {
     searchSameGroup: () => callApi('_search_same_group', { user_id: userId })
         .then((res: any) => res?.data ?? [])
         .catch(() => []),
-    makeForwardMsg: (nodes: any[]) => {
-      if (!Array.isArray(nodes) || nodes.length === 0) {
-        return [];
-      }
-      const parts: any[] = [];
-
-      for (const node of nodes) {
-        const msg = node.message ?? node;
-        const nickname = node.nickname ?? '';
-
-        if (nickname) {
-          parts.push({ type: 'text', text: `【${nickname}】\n` });
-        }
-        if (typeof msg === 'string') {
-          parts.push({ type: 'text', text: msg + '\n' });
-        } else if (Array.isArray(msg)) {
-          parts.push(...msg);
-          parts.push({ type: 'text', text: '\n' });
-        } else if (msg && typeof msg === 'object') {
-          parts.push(msg);
-          parts.push({ type: 'text', text: '\n' });
-        }
-      }
-
-      return parts;
-    }
+    makeForwardMsg: (nodes: any[]) => buildForwardMsgParts(nodes)
   };
 }
 
@@ -1292,8 +1285,8 @@ function buildEvent(data: IPCEventMessage['data'], msgId: string) {
   }
 
   // ── IPC 回复函数（始终覆盖，所有平台通用） ──
-  const reply = (msg: any, _quote = false) => {
-    const contents = serializeReply(msg);
+  const reply = async (msg: any, _quote = false) => {
+    const contents = await serializeReply(msg);
     const replyId = `r_${++replyIdCounter}_${Date.now()}`;
 
     // 统计发送的消息数
@@ -1726,8 +1719,9 @@ async function main(): Promise<void> {
   // 6. 监听父进程 IPC 消息
   process.on('message', (msg: ParentToWorker) => {
     if (msg.type === 'event') {
-      // 记录当前事件的平台，供 callApi 自动附加
+      // 记录当前事件的平台和消息 ID，供 callApi 自动附加
       currentPlatform = msg.data.platform ?? '';
+      currentMsgId = msg.id;
       // 记录默认平台（定时任务触发时用此兜底）
       if (currentPlatform) {
         defaultPlatform = currentPlatform;
