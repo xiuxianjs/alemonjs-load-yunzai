@@ -466,6 +466,87 @@ async function dispatchApi(action: string, params: Record<string, any>): Promise
 
     // ─── OneBot 特有 API（需要原生 WebSocket 客户端） ───
 
+    case 'sendLike': {
+      const event = getEventForApi(params.platform);
+
+      if (!event) {
+        throw new Error('无可用事件上下文');
+      }
+      const client = getOneBotClient(event);
+
+      if (!client) {
+        throw new Error('sendLike 仅 OneBot 平台可用');
+      }
+
+      return await client.sendLike({ user_id: Number(params.user_id), times: params.times ?? 10 });
+    }
+
+    case 'pokeMember': {
+      const event = getEventForApi(params.platform);
+
+      if (!event) {
+        throw new Error('无可用事件上下文');
+      }
+      const client = getOneBotClient(event);
+
+      if (!client) {
+        throw new Error('pokeMember 仅 OneBot 平台可用');
+      }
+
+      return await client.send({
+        action: 'group_poke',
+        params: { group_id: Number(params.group_id), user_id: Number(params.user_id) }
+      });
+    }
+
+    case 'pokeFriend': {
+      const event = getEventForApi(params.platform);
+
+      if (!event) {
+        throw new Error('无可用事件上下文');
+      }
+      const client = getOneBotClient(event);
+
+      if (!client) {
+        throw new Error('pokeFriend 仅 OneBot 平台可用');
+      }
+
+      return await client.send({
+        action: 'friend_poke',
+        params: { user_id: Number(params.user_id) }
+      });
+    }
+
+    case 'getCookies': {
+      const event = getEventForApi(params.platform);
+
+      if (!event) {
+        throw new Error('无可用事件上下文');
+      }
+      const client = getOneBotClient(event);
+
+      if (!client) {
+        throw new Error('getCookies 仅 OneBot 平台可用');
+      }
+
+      return await client.getCookies();
+    }
+
+    case 'getCsrfToken': {
+      const event = getEventForApi(params.platform);
+
+      if (!event) {
+        throw new Error('无可用事件上下文');
+      }
+      const client = getOneBotClient(event);
+
+      if (!client) {
+        throw new Error('getCsrfToken 仅 OneBot 平台可用');
+      }
+
+      return await client.getCsrfToken();
+    }
+
     case 'getMsg': {
       const event = getEventForApi(params.platform);
 
@@ -519,6 +600,25 @@ async function dispatchApi(action: string, params: Record<string, any>): Promise
       return await client.send({
         action: 'get_friend_msg_history',
         params: { user_id: Number(params.user_id), message_seq: Number(params.message_seq), count: params.count ?? 1 }
+      });
+    }
+
+    case 'getGroupFileUrl':
+    case 'getPrivateFileUrl': {
+      const event = getEventForApi(params.platform);
+
+      if (!event) {
+        throw new Error('无可用事件上下文');
+      }
+      const client = getOneBotClient(event);
+
+      if (!client) {
+        return { url: '' };
+      }
+
+      return await client.send({
+        action: 'get_group_file_url',
+        params: { group_id: Number(params.group_id ?? 0), file_id: String(params.file_id) }
       });
     }
 

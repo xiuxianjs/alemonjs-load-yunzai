@@ -6,10 +6,11 @@
  * 2. 子进程生命周期 — fork / stop / restart Worker
  * 3. IPC 通信 — 父子进程消息收发
  */
-import { logger } from 'alemonjs';
+import { getConfigValue, logger } from 'alemonjs';
 import type { ChildProcess } from 'node:child_process';
 import { execFile, fork } from 'node:child_process';
-import { existsSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { join } from 'node:path';
 import type { PluginInfo } from '../path';
 import { getDefaultRepo, getGhProxy, getYunzaiDir, WORKER_PATH, YARN_PATH } from '../path';
 import type { IPCApiRequest, IPCReply, ParentToWorker, WorkerToParent } from './protocol';
@@ -269,6 +270,40 @@ class YunzaiManager {
 
   // ─── 进程控制（内部方法，无锁） ───
 
+  /** 将 AlemonJS 的 Redis 配置同步到 Miao-Yunzai 的 config/config/redis.yaml */
+  private syncRedisConfig(): void {
+    try {
+      const values = getConfigValue() ?? {};
+      const rc = values.redis;
+
+      if (!rc || typeof rc !== 'object') {
+        logger.info('[Yunzai] 未找到 AlemonJS redis 配置，Miao-Yunzai 将使用自身默认配置');
+
+        return;
+      }
+
+      const yunzaiDir = getYunzaiDir();
+      const cfgDir = join(yunzaiDir, 'config', 'config');
+
+      if (!existsSync(cfgDir)) {
+        mkdirSync(cfgDir, { recursive: true });
+      }
+
+      const host = rc.host ?? '127.0.0.1';
+      const port = rc.port ?? 6379;
+      const username = rc.username ?? '';
+      const password = rc.password ?? '';
+      const db = rc.db ?? 0;
+
+      const yaml = [`host: ${host}`, `port: ${port}`, `username: ${username}`, `password: ${password}`, `db: ${db}`].join('\n') + '\n';
+
+      writeFileSync(join(cfgDir, 'redis.yaml'), yaml, 'utf-8');
+      logger.info(`[Yunzai] Redis 配置已同步 → ${host}:${port}/${db}`);
+    } catch (err: any) {
+      logger.warn(`[Yunzai] Redis 配置同步失败: ${err.message}`);
+    }
+  }
+
   private async startInternal(): Promise<void> {
     if (this.isRunning) {
       throw new Error('Worker 已在运行');
@@ -280,6 +315,9 @@ class YunzaiManager {
     }
 
     this.ready = false;
+
+    // ── 同步 AlemonJS 的 Redis 配置到 Miao-Yunzai ──
+    this.syncRedisConfig();
 
     this.worker = fork(WORKER_PATH, [], {
       cwd: getYunzaiDir(),

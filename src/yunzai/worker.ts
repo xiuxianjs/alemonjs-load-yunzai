@@ -128,247 +128,9 @@ function injectGlobals(): void {
     cyan: identity
   };
 
-  // ── redis (内存模拟，支持 String / Hash / Sorted Set + TTL) ──
-  const store = new Map<string, string>();
-  const hStore = new Map<string, Map<string, string>>();
-  const zStore = new Map<string, { value: string; score: number }[]>();
-  /** TTL 定时器（key → timer），到期自动清理 store/hStore/zStore */
-  const ttlTimers = new Map<string, ReturnType<typeof setTimeout>>();
-
-  /** 设置 key 过期（秒） */
-  function setTTL(k: string, seconds: number): void {
-    clearTTL(k);
-
-    if (seconds > 0) {
-      ttlTimers.set(
-        k,
-        setTimeout(() => {
-          store.delete(k);
-          hStore.delete(k);
-          zStore.delete(k);
-          ttlTimers.delete(k);
-        }, seconds * 1000)
-      );
-    }
-  }
-
-  /** 清除 key 的 TTL */
-  function clearTTL(k: string): void {
-    const t = ttlTimers.get(k);
-
-    if (t) {
-      clearTimeout(t);
-      ttlTimers.delete(k);
-    }
-  }
-
-  g.redis = {
-    // ─ String ─
-    get: (k: string) => store.get(k) ?? null,
-    set: (k: string, v: any, opts?: any) => {
-      store.set(k, String(v));
-
-      // 支持 redis.set(k, v, { EX: seconds }) 格式
-      if (opts && typeof opts === 'object' && opts.EX) {
-        setTTL(k, Number(opts.EX));
-      }
-
-      return 'OK';
-    },
-    del: (k: string) => {
-      store.delete(k);
-      hStore.delete(k);
-      zStore.delete(k);
-      clearTTL(k);
-
-      return 1;
-    },
-    keys: (p: string) => {
-      const re = new RegExp('^' + p.replace(/[.+?^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '.*') + '$');
-      const all = new Set([...store.keys(), ...hStore.keys(), ...zStore.keys()]);
-
-      return [...all].filter(k => re.test(k));
-    },
-    exists: (k: string) => (store.has(k) || hStore.has(k) || zStore.has(k) ? 1 : 0),
-    expire: (k: string, seconds: number) => {
-      if (store.has(k) || hStore.has(k) || zStore.has(k)) {
-        setTTL(k, seconds);
-
-        return 1;
-      }
-
-      return 0;
-    },
-    incr: (k: string) => {
-      const v = parseInt(store.get(k) ?? '0') + 1;
-
-      store.set(k, String(v));
-
-      return v;
-    },
-    setEx: (k: string, ttl: number, v: any) => {
-      store.set(k, String(v));
-      setTTL(k, ttl);
-
-      return 'OK';
-    },
-    sendCommand: () => null,
-    connect: async () => {},
-    disconnect: async () => {},
-    save: () => 'OK',
-
-    // ─ Hash ─
-    hGet: (k: string, f: string) => hStore.get(k)?.get(f) ?? null,
-    hSet: (k: string, f: string, v: string) => {
-      if (!hStore.has(k)) {
-        hStore.set(k, new Map());
-      }
-      hStore.get(k)!.set(f, v);
-
-      return 1;
-    },
-    hDel: (k: string, f: string) => {
-      const m = hStore.get(k);
-
-      if (!m) {
-        return 0;
-      }
-
-      return m.delete(f) ? 1 : 0;
-    },
-    hGetAll: (k: string) => {
-      const m = hStore.get(k);
-
-      if (!m) {
-        return {};
-      }
-
-      return Object.fromEntries(m);
-    },
-    hLen: (k: string) => hStore.get(k)?.size ?? 0,
-
-    // ─ Sorted Set ─
-    zAdd: (k: string, ...args: any[]) => {
-      if (!zStore.has(k)) {
-        zStore.set(k, []);
-      }
-      const arr = zStore.get(k)!;
-
-      for (const a of args) {
-        const { score, value } = typeof a === 'object' ? a : { score: 0, value: '' };
-        const idx = arr.findIndex(e => e.value === String(value));
-
-        if (idx >= 0) {
-          arr[idx].score = score;
-        } else {
-          arr.push({ value: String(value), score });
-        }
-      }
-      arr.sort((a, b) => a.score - b.score);
-
-      return 1;
-    },
-    zRange: (k: string, start: number, stop: number) => {
-      const arr = zStore.get(k) ?? [];
-      const s = start < 0 ? Math.max(arr.length + start, 0) : start;
-      const e = stop < 0 ? arr.length + stop : stop;
-
-      return arr.slice(s, e + 1).map(i => i.value);
-    },
-    zRangeWithScores: (k: string, start: number, stop: number) => {
-      const arr = zStore.get(k) ?? [];
-      const s = start < 0 ? Math.max(arr.length + start, 0) : start;
-      const e = stop < 0 ? arr.length + stop : stop;
-
-      return arr.slice(s, e + 1);
-    },
-    zRangeByScore: (k: string, min: number, max: number) => {
-      const arr = zStore.get(k) ?? [];
-
-      return arr.filter(i => i.score >= min && i.score <= max).map(i => i.value);
-    },
-    zRangeByScoreWithScores: (k: string, min: number, max: number) => {
-      const arr = zStore.get(k) ?? [];
-
-      return arr.filter(i => i.score >= min && i.score <= max);
-    },
-    zScore: (k: string, v: string) => {
-      const arr = zStore.get(k) ?? [];
-      const found = arr.find(i => i.value === v);
-
-      return found ? found.score : null;
-    },
-    zDel: (k: string, v: string) => {
-      const arr = zStore.get(k);
-
-      if (!arr) {
-        return 0;
-      }
-      const idx = arr.findIndex(i => i.value === v);
-
-      if (idx >= 0) {
-        arr.splice(idx, 1);
-
-        return 1;
-      }
-
-      return 0;
-    },
-    // node-redis v4 使用 zRem，Yunzai 插件普遍调用此方法
-    zRem: (k: string, v: string | string[]) => {
-      const arr = zStore.get(k);
-
-      if (!arr) {
-        return 0;
-      }
-      const vals = Array.isArray(v) ? v : [v];
-      let removed = 0;
-
-      for (const val of vals) {
-        const idx = arr.findIndex(i => i.value === String(val));
-
-        if (idx >= 0) {
-          arr.splice(idx, 1);
-          removed++;
-        }
-      }
-
-      return removed;
-    },
-    zRemRangeByScore: (k: string, min: number, max: number) => {
-      const arr = zStore.get(k);
-
-      if (!arr) {
-        return 0;
-      }
-      const before = arr.length;
-      const filtered = arr.filter(i => i.score < min || i.score > max);
-
-      zStore.set(k, filtered);
-
-      return before - filtered.length;
-    },
-    zCard: (k: string) => zStore.get(k)?.length ?? 0,
-    /** 统计分数在 [min, max] 范围内的成员数 */
-    zCount: (k: string, min: number | string, max: number | string) => {
-      const arr = zStore.get(k) ?? [];
-      const lo = min === '-inf' ? -Infinity : Number(min);
-      const hi = max === '+inf' ? Infinity : Number(max);
-
-      return arr.filter(i => i.score >= lo && i.score <= hi).length;
-    },
-    /** 获取成员的逆序排名（按分数从高到低，0-based），不存在返回 null */
-    zRevRank: (k: string, v: string) => {
-      const arr = zStore.get(k) ?? [];
-      // 按分数降序排列
-      const sorted = [...arr].sort((a, b) => b.score - a.score);
-      const idx = sorted.findIndex(i => i.value === String(v));
-
-      return idx >= 0 ? idx : null;
-    },
-    // 批量获取
-    mGet: (keys: string[]) => keys.map(k => store.get(k) ?? null)
-  };
+  // ── redis ──
+  // 由 Miao-Yunzai 自身的 redisInit() 在 main() 中初始化 global.redis
+  // AlemonJS 启动前已将 redis 配置同步到 Miao-Yunzai/config/config/redis.yaml
 
   // ── Bot 对象 ──
   // 通过 callApi 实现真实的 icqq API 调用，经由 IPC → AlemonJS → 平台适配器
@@ -481,6 +243,15 @@ function injectGlobals(): void {
 
     /** 获取转发消息（miao-plugin / ZZZ-Plugin 使用） */
     getForwardMsg: (resId: string) => callApi('getForwardMsg', { id: resId }).catch(() => ({ message: [] })),
+
+    /** 获取 Cookies（genshin 插件米游社 Cookie 抓取可能需要） */
+    getCookies: (domain?: string) => callApi('getCookies', { domain: domain ?? '' }).catch(() => ({ cookies: '' })),
+
+    /** 获取 CSRF Token */
+    getCsrfToken: () => callApi('getCsrfToken').catch(() => ({ token: 0 })),
+
+    /** 点赞（sendLike） */
+    sendLike: (uid: number, times = 10) => callApi('sendLike', { user_id: uid, times }).catch(() => false),
 
     /**
      * 构造合并转发消息（Bot 级别）
@@ -755,9 +526,17 @@ function makeGroupProxy(groupId: number, opts?: { name?: string; is_owner?: bool
 
       return {
         user_id: uid,
+        group_id: groupId,
         card: cached?.card ?? cached?.nickname ?? '',
         nickname: cached?.nickname ?? '',
+        title: cached?.title ?? '',
         role: cached?.role ?? 'member',
+        is_admin: cached?.role === 'admin' || cached?.role === 'owner',
+        is_owner: cached?.role === 'owner',
+        is_friend: false,
+        mute_left: cached?.shut_up_timestamp ? Math.max(0, cached.shut_up_timestamp - Math.floor(Date.now() / 1000)) : 0,
+        /** 所属群代理 */
+        group: makeGroupProxy(groupId, opts),
         info: callApi('getGroupMemberInfo', { group_id: groupId, user_id: uid })
           .then((res: any) => {
             if (res?.data) {
@@ -770,6 +549,33 @@ function makeGroupProxy(groupId: number, opts?: { name?: string; is_owner?: bool
             return res?.data ?? cached ?? {};
           })
           .catch(() => cached ?? {}),
+        /** 刷新成员信息 */
+        renew: () => callApi('getGroupMemberInfo', { group_id: groupId, user_id: uid, no_cache: true })
+            .then((res: any) => {
+              if (res?.data) {
+                if (!memberCache.has(groupId)) {
+                  memberCache.set(groupId, new Map());
+                }
+                memberCache.get(groupId)!.set(uid, res.data);
+
+                return res.data;
+              }
+
+              return cached ?? {};
+            })
+            .catch(() => cached ?? {}),
+        /** 设置管理员 */
+        setAdmin: (yes = true) => callApi('setGroupAdmin', { group_id: groupId, user_id: uid, enable: yes }).catch(() => false),
+        /** 设置专属头衔 */
+        setTitle: (title = '', duration = -1) => callApi('setGroupSpecialTitle', { group_id: groupId, user_id: uid, special_title: title, duration }).catch(() => false),
+        /** 设置群名片 */
+        setCard: (card = '') => callApi('setGroupCard', { group_id: groupId, user_id: uid, card }).catch(() => false),
+        /** 踢出 */
+        kick: (_msg = '', block = false) => callApi('setGroupKick', { group_id: groupId, user_id: uid, reject_add_request: block }).catch(() => false),
+        /** 禁言 */
+        mute: (duration = 600) => callApi('setGroupBan', { group_id: groupId, user_id: uid, duration }).catch(() => false),
+        /** 戳一戳 */
+        poke: () => callApi('pokeMember', { group_id: groupId, user_id: uid }).catch(() => false),
         getAvatarUrl: () => `https://q1.qlogo.cn/g?b=qq&s=0&nk=${uid}`
       };
     },
@@ -782,6 +588,9 @@ function makeGroupProxy(groupId: number, opts?: { name?: string; is_owner?: bool
 
     /** 踢出成员 */
     kickMember: (uid: number, rejectAdd = false) => callApi('setGroupKick', { group_id: groupId, user_id: uid, reject_add_request: rejectAdd }).catch(() => false),
+
+    /** 戳一戳群成员 */
+    pokeMember: (uid: number) => callApi('pokeMember', { group_id: groupId, user_id: uid }).catch(() => false),
 
     /** 设置群名片 */
     setCard: (uid: number, card: string) => callApi('setGroupCard', { group_id: groupId, user_id: uid, card }).catch(() => false),
@@ -846,7 +655,12 @@ function makeGroupProxy(groupId: number, opts?: { name?: string; is_owner?: bool
      */
     getChatHistory: (seq: number, count = 1) => callApi('getChatHistory', { group_id: groupId, message_seq: seq, count })
         .then((res: any) => res?.data?.messages ?? res?.messages ?? res ?? [])
-        .catch(() => [])
+        .catch(() => []),
+
+    /** 获取群文件 URL（genshin exportLog 抽卡记录导入用） */
+    getFileUrl: (fid: string) => callApi('getGroupFileUrl', { group_id: groupId, file_id: fid })
+        .then((res: any) => res?.data?.url ?? res?.url ?? '')
+        .catch(() => '')
   };
 }
 
@@ -872,10 +686,21 @@ function makeFriendProxy(userId: number, userName: string) {
 
     getAvatarUrl: () => `https://q1.qlogo.cn/g?b=qq&s=0&nk=${userId}`,
 
+    /** 点赞 */
+    thumbUp: (times = 10) => callApi('sendLike', { user_id: userId, times }).catch(() => false),
+
+    /** 戳一戳（好友） */
+    poke: () => callApi('pokeFriend', { user_id: userId }).catch(() => false),
+
     /** 获取私聊聊天记录 */
     getChatHistory: (seq: number, count = 1) => callApi('getChatHistory', { user_id: userId, message_seq: seq, count })
         .then((res: any) => res?.data?.messages ?? res?.messages ?? res ?? [])
         .catch(() => []),
+
+    /** 获取私聊文件 URL（exportLog 抽卡记录导入用） */
+    getFileUrl: (fid: string) => callApi('getPrivateFileUrl', { user_id: userId, file_id: fid })
+        .then((res: any) => res?.data?.url ?? res?.url ?? '')
+        .catch(() => ''),
 
     /**
      * 构造合并转发消息（私聊版本）
@@ -978,7 +803,8 @@ function buildRawNonMessageEvent(raw: any, data: IPCEventMessage['data'], selfId
       _info: {
         card: raw.sender?.card ?? raw.member?.card ?? data.userName ?? '',
         nickname: raw.sender?.nickname ?? raw.member?.nickname ?? data.userName ?? ''
-      }
+      },
+      getAvatarUrl: (size = 0) => `https://q1.qlogo.cn/g?b=qq&s=${size}&nk=${userId}`
     };
   }
 
@@ -1074,7 +900,8 @@ function buildFallbackNonMessageEvent(
         card: data.userName ?? '',
         nickname: data.userName ?? '',
         role: 'member'
-      }
+      },
+      getAvatarUrl: (size = 0) => `https://q1.qlogo.cn/g?b=qq&s=${size}&nk=${userId}`
     };
   }
 
@@ -1257,7 +1084,8 @@ function buildEvent(data: IPCEventMessage['data'], msgId: string) {
           card: raw.sender?.card ?? raw.sender?.nickname ?? data.userName ?? '',
           nickname: raw.sender?.nickname ?? data.userName ?? '',
           role: raw.sender?.role ?? 'member'
-        }
+        },
+        getAvatarUrl: (size = 0) => data.userAvatar ?? `https://q1.qlogo.cn/g?b=qq&s=${size}&nk=${userId}`
       },
 
       /** dealMsg 对 e.nickname 的兜底判断用 */
@@ -1358,7 +1186,8 @@ function buildEvent(data: IPCEventMessage['data'], msgId: string) {
         card: data.userName ?? '',
         nickname: data.userName ?? '',
         role: 'member'
-      }
+      },
+      getAvatarUrl: (size = 0) => data.userAvatar ?? `https://q1.qlogo.cn/g?b=qq&s=${size}&nk=${userId}`
     },
 
     nickname: data.userName ?? 'User',
@@ -1397,6 +1226,19 @@ async function main(): Promise<void> {
 
   if (!fs.existsSync(configDir)) {
     fs.mkdirSync(configDir, { recursive: true });
+  }
+
+  // 2.5 初始化 Redis — 调用 Miao-Yunzai 自身的 redisInit()，读取 config/config/redis.yaml
+  try {
+    const redisMod = await import(pathToFileURL(path.join(cwd, 'lib', 'config', 'redis.js')).href);
+    const redisInit = redisMod.default ?? redisMod.redisInit;
+
+    await redisInit();
+    log('info', 'Redis 初始化成功（Miao-Yunzai）');
+  } catch (err: any) {
+    log('error', `Redis 初始化失败: ${err.message}`);
+    ipcSend({ type: 'error', message: `Redis 初始化失败: ${err.message}` });
+    process.exit(1);
   }
 
   // 3. 加载 plugin 基类 → global.plugin

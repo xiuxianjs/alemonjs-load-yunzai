@@ -9,11 +9,6 @@
   "editor.insertSpaces": true,
   "editor.detectIndentation": false,
   
-  // TypeScript 配置
-  "typescript.updateImportsOnFileMove.enabled": "always",
-  "typescript.suggest.autoImports": true,
-  "typescript.suggest.completeFunctionCalls": true,
-  
   // ESLint 配置
   "eslint.workingDirectories": [
     "./",
@@ -28,17 +23,6 @@
   // Prettier 配置
   "prettier.configPath": "./.prettierrc",
   "prettier.requireConfig": true,
-  
-  // 文件关联
-  "files.associations": {
-    "*.tsx": "typescriptreact",
-    "*.ts": "typescript",
-    "*.jsx": "javascriptreact",
-    "*.js": "javascript",
-    "alemon.config.yaml": "yaml",
-    "lvy.config.ts": "typescript",
-    "jsxp.config.tsx": "typescriptreact"
-  },
   
   // 搜索排除
   "search.exclude": {
@@ -60,10 +44,6 @@
   },
   
   // Tailwind CSS 支持
-  "tailwindCSS.includeLanguages": {
-    "typescript": "typescript",
-    "typescriptreact": "typescriptreact"
-  },
   "tailwindCSS.experimental.classRegex": [
     ["clsx\\(([^)]*)\\)", "(?:'|\"|`)([^']*)(?:'|\"|`)"],
     ["className\\s*:\\s*[\"'`]([^\"'`]*)[\"'`]"]
@@ -75,11 +55,7 @@
   
   // Git 配置
   "git.enableSmartCommit": true,
-  "git.confirmSync": false,
   "git.autofetch": true,
-  
-  // 错误提示增强
-  "problems.decorations.enabled": true,
   
   // 括号配对高亮
   "editor.bracketPairColorization.enabled": true,
