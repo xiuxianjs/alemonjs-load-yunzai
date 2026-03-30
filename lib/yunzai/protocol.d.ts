@@ -69,6 +69,7 @@ export interface IPCApiRequest {
     reqId: string;
     action: string;
     params: Record<string, any>;
+    msgId?: string;
 }
 export type WorkerToParent = IPCReady | IPCReply | IPCError | IPCLog | IPCDone | IPCApiRequest;
 export interface ReplyContent {

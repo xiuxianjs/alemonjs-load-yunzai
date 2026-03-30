@@ -8,6 +8,7 @@ declare class YunzaiManager {
     private replyHandlers;
     private doneHandlers;
     private apiRequestHandlers;
+    private exitHandlers;
     private restartCount;
     private maxRestarts;
     private restartTimer;
@@ -20,6 +21,9 @@ declare class YunzaiManager {
     getStatus(): string;
     get isBusy(): boolean;
     get busyTaskName(): string;
+    get lastStartOk(): boolean;
+    private markStartOk;
+    private markStartFailed;
     cancelTask(): boolean;
     install(repoUrl?: string): Promise<void>;
     update(): Promise<string>;
@@ -36,6 +40,7 @@ declare class YunzaiManager {
     onReply(handler: ReplyHandler): () => void;
     onDone(handler: (done: any) => void): () => void;
     onApiRequest(handler: ApiRequestHandler): () => void;
+    onWorkerExit(handler: (code: number | null) => void): () => void;
     sendToWorker(msg: ParentToWorker): void;
     private handleMessage;
     private beginTask;
