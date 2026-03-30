@@ -26,6 +26,8 @@ export interface IPCEventMessage {
   /** 唯一消息 ID，用于关联回复 */
   id: string;
   data: {
+    /** AlemonJS 事件名称，如 'message.create', 'member.add' 等 */
+    eventName: string;
     // ── 来源平台 ──
     /** 平台标识: 'qq' | 'discord' | 'telegram' | 'kook' | ... */
     platform: string;

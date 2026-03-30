@@ -27,8 +27,9 @@ const DEFAULT_YUNZAI_REPO = 'https://github.com/yoimiya-kokomi/Miao-Yunzai.git';
 const DEFAULT_MIAO_PLUGIN_REPO = 'https://github.com/yoimiya-kokomi/miao-plugin.git';
 
 function getConfig() {
-  const values = getConfigValue() || {};
-  return values['alemonjs-load-yunzai'] || {};
+  const values = getConfigValue() ?? {};
+
+  return values['alemonjs-load-yunzai'] ?? {};
 }
 
 /** GitHub 代理前缀 */
@@ -38,18 +39,50 @@ export function getGhProxy(): string {
 
 /** 默认 Yunzai 仓库地址 */
 export function getDefaultRepo(): string {
-  const repo = getConfig()?.yunzai_repo || DEFAULT_YUNZAI_REPO;
+  const repo = getConfig()?.yunzai_repo ?? DEFAULT_YUNZAI_REPO;
+
   return `${getGhProxy()}${repo}`;
 }
 
 /** miao-plugin 仓库地址 */
 export function getMiaoPluginRepo(): string {
-  const repo = getConfig()?.miao_plugin_repo || DEFAULT_MIAO_PLUGIN_REPO;
+  const repo = getConfig()?.miao_plugin_repo ?? DEFAULT_MIAO_PLUGIN_REPO;
+
   return `${getGhProxy()}${repo}`;
+}
+
+// ─── 插件注册表 ───
+
+export interface PluginInfo {
+  /** plugins/ 下的目录名 */
+  dirName: string;
+  /** git clone 地址 */
+  repoUrl: string;
+  /** 显示名称 */
+  label: string;
+}
+
+/** 别名 → 插件信息映射 */
+const PLUGIN_ALIAS_MAP: Record<string, PluginInfo> = {
+  miao: { dirName: 'miao-plugin', repoUrl: 'https://github.com/yoimiya-kokomi/miao-plugin.git', label: 'miao-plugin' },
+  miaomiao: { dirName: 'miao-plugin', repoUrl: 'https://github.com/yoimiya-kokomi/miao-plugin.git', label: 'miao-plugin' },
+  原神: { dirName: 'miao-plugin', repoUrl: 'https://github.com/yoimiya-kokomi/miao-plugin.git', label: 'miao-plugin' },
+  starrail: { dirName: 'StarRail-plugin', repoUrl: 'https://gitee.com/hewang1an/StarRail-plugin.git', label: 'StarRail-plugin' },
+  星铁: { dirName: 'StarRail-plugin', repoUrl: 'https://gitee.com/hewang1an/StarRail-plugin.git', label: 'StarRail-plugin' },
+  zzz: { dirName: 'ZZZ-Plugin', repoUrl: 'https://gitee.com/bietiaop/ZZZ-Plugin.git', label: 'ZZZ-Plugin' },
+  图鉴: { dirName: 'xiaoyao-cvs-plugin', repoUrl: 'https://cnb.cool/tar/xiaoyao-cvs-plugin.git', label: 'xiaoyao-cvs-plugin' },
+  锅巴: { dirName: 'guoba-plugin', repoUrl: 'https://gitee.com/guoba-yunzai/guoba-plugin.git', label: 'guoba-plugin' },
+  guoba: { dirName: 'guoba-plugin', repoUrl: 'https://gitee.com/guoba-yunzai/guoba-plugin.git', label: 'guoba-plugin' }
+};
+
+/** 根据用户输入的别名查找插件信息（大小写不敏感） */
+export function getPluginInfo(alias: string): PluginInfo | undefined {
+  return PLUGIN_ALIAS_MAP[alias.toLowerCase()];
 }
 
 /** Miao-Yunzai 安装目录 */
 export function getYunzaiDir(): string {
-  const botName = getConfig()?.bot_name || DEFAULT_BOT_NAME;
+  const botName = getConfig()?.bot_name ?? DEFAULT_BOT_NAME;
+
   return join(PACKAGE_ROOT, botName);
 }
