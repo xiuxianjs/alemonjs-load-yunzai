@@ -66,7 +66,7 @@ function injectGlobals(): void {
       return 1;
     },
     keys: async (p: string) => {
-      const re = new RegExp('^' + p.replace(/[.+^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '.*') + '$');
+      const re = new RegExp('^' + p.replace(/[.+?^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '.*') + '$');
       const all = new Set([...store.keys(), ...hStore.keys(), ...zStore.keys()]);
       return [...all].filter(k => re.test(k));
     },
@@ -241,7 +241,7 @@ function extractText(message: any[]): string {
 
 /** 检测消息段中是否 at 了 self_id */
 function detectAtMe(message: any[], selfId: number): boolean {
-  return message.some((s: any) => s.type === 'at' && (String(s.data?.qq ?? s.qq) === String(selfId) || s.data?.qq === 'all' || s.qq === 'all'));
+  return message.some((s: any) => s.type === 'at' && String(s.data?.qq ?? s.qq) === String(selfId));
 }
 
 /** 检测消息段中是否 at all */
@@ -249,11 +249,93 @@ function detectAtAll(message: any[]): boolean {
   return message.some((s: any) => s.type === 'at' && (s.data?.qq === 'all' || s.qq === 'all'));
 }
 
+/**
+ * 将跨平台媒体附件（来自 AlemonJS MessageMedia）转为 icqq 消息段
+ * 使得来自 Discord/Telegram 等平台的图片也能被 Yunzai 插件感知
+ */
+function mediaToSegments(media: IPCEventMessage['data']['media']): any[] {
+  if (!Array.isArray(media) || media.length === 0) return [];
+  return media.map(m => {
+    switch (m.type) {
+      case 'image':
+      case 'sticker':
+        return { type: 'image', file: m.url || m.fileId || '', url: m.url };
+      case 'audio':
+        return { type: 'record', file: m.url || m.fileId || '', url: m.url };
+      case 'video':
+        return { type: 'video', file: m.url || m.fileId || '', url: m.url };
+      default:
+        return { type: 'file', file: m.url || m.fileId || '', name: m.fileName };
+    }
+  });
+}
+
+/**
+ * OneBot 消息段格式统一化
+ * icqq 格式: {type, text, qq, file, ...}
+ * 标准 OneBot: {type, data: {text, qq, ...}}
+ * 统一展平为 icqq 风格，方便 Yunzai 插件直接访问
+ */
+function normalizeSegments(message: any[]): any[] {
+  return message.map((seg: any) => {
+    if (seg.data && typeof seg.data === 'object') {
+      return { type: seg.type, ...seg.data };
+    }
+    return seg;
+  });
+}
+
+/** 安全转 number（非 QQ 平台的 userId 可能是非数字字符串） */
+function safeInt(v: any, fallback: number): number {
+  const n = parseInt(String(v));
+  return Number.isFinite(n) ? n : fallback;
+}
+
+/**
+ * 创建 e.group 代理对象
+ * 许多 Yunzai 插件访问 e.group.xxx（如 getMemberMap、pickMember 等）
+ */
+function makeGroupProxy(groupId: number) {
+  return {
+    group_id: groupId,
+    name: `Group ${groupId}`,
+    is_owner: false,
+    is_admin: false,
+    mute_left: 0,
+    sendMsg: async () => ({}),
+    getMemberMap: async () => new Map(),
+    pickMember: (uid: number) => ({
+      user_id: uid,
+      info: {},
+      getAvatarUrl: () => `https://q1.qlogo.cn/g?b=qq&s=0&nk=${uid}`
+    }),
+    recallMsg: async () => false,
+    muteMember: async () => false,
+    kickMember: async () => false,
+    quit: async () => false
+  };
+}
+
+/**
+ * 创建 e.friend 代理对象
+ * 用于私聊场景，插件可能访问 e.friend.sendMsg 等
+ */
+function makeFriendProxy(userId: number, userName: string) {
+  return {
+    user_id: userId,
+    nickname: userName,
+    remark: userName,
+    sendMsg: async () => ({}),
+    getAvatarUrl: () => `https://q1.qlogo.cn/g?b=qq&s=0&nk=${userId}`
+  };
+}
+
 function buildEvent(data: IPCEventMessage['data'], msgId: string) {
   const raw = data.rawEvent;
   const selfId = (globalThis as any).Bot?.uin || 10000;
+  const platformTag = data.platform ? `[${data.platform}]` : '';
 
-  // ── IPC 回复函数（始终覆盖） ──
+  // ── IPC 回复函数（始终覆盖，所有平台通用） ──
   const reply = async (msg: any, _quote = false) => {
     const contents = serializeReply(msg);
     log('debug', `[reply] id=${msgId} contents=${JSON.stringify(contents).slice(0, 200)}`);
@@ -261,28 +343,21 @@ function buildEvent(data: IPCEventMessage['data'], msgId: string) {
     return { message_id: `reply_${Date.now()}` };
   };
 
-  // ── 有原始 OneBot 事件时，直接基于真实数据构建 ──
+  // ══════════════════════════════════════════
+  //  路径 A: 有原始 OneBot 事件 → 真实数据构建
+  // ══════════════════════════════════════════
   if (raw && typeof raw === 'object' && raw.post_type) {
     const isGroup = raw.message_type === 'group';
-    const userId = (raw.user_id ?? parseInt(data.userId)) || 10001;
-    const groupId = raw.group_id ?? (isGroup ? parseInt(data.spaceId) || 0 : 0);
+    const userId = raw.user_id ?? safeInt(data.userId, 10001);
+    const groupId = raw.group_id ?? (isGroup ? safeInt(data.spaceId, 0) : 0);
     const message: any[] = Array.isArray(raw.message) ? raw.message : [{ type: 'text', text: data.messageText }];
 
-    // OneBot 消息段格式兼容：icqq 用 {type, text/qq/id/file}，部分 OneBot 用 {type, data:{text/qq/...}}
-    // 统一展平 data 字段到顶层，方便 Yunzai 插件访问
-    const normalizedMessage = message.map((seg: any) => {
-      if (seg.data && typeof seg.data === 'object') {
-        return { type: seg.type, ...seg.data };
-      }
-      return seg;
-    });
-
+    const normalizedMessage = normalizeSegments(message);
     const rawMessage = raw.raw_message ?? extractText(normalizedMessage);
     const atme = detectAtMe(normalizedMessage, selfId);
     const atall = detectAtAll(normalizedMessage);
 
     const e: any = {
-      // ── OneBot 标准字段（来自原始事件） ──
       post_type: raw.post_type || 'message',
       message_type: raw.message_type || (isGroup ? 'group' : 'private'),
       sub_type: raw.sub_type || (isGroup ? 'normal' : 'friend'),
@@ -296,12 +371,10 @@ function buildEvent(data: IPCEventMessage['data'], msgId: string) {
       rand: raw.rand ?? Math.random(),
       font: raw.font || '',
 
-      // ── 消息内容 ──
       message: normalizedMessage,
       raw_message: rawMessage,
-      msg: '', // Yunzai dealMsg 会重新赋值
+      msg: '',
 
-      // ── 发送者信息（保留原始 sender） ──
       sender: {
         user_id: userId,
         nickname: raw.sender?.nickname || data.userName || 'User',
@@ -314,20 +387,20 @@ function buildEvent(data: IPCEventMessage['data'], msgId: string) {
         area: raw.sender?.area
       },
 
-      // ── at 检测 ──
       atme,
       atall,
 
-      // ── 权限（AlemonJS 侧判定） ──
       isMaster: data.isMaster,
       isOwner: data.isMaster,
       isAdmin: data.isMaster || raw.sender?.role === 'admin' || raw.sender?.role === 'owner',
 
-      // ── 方法 ──
       reply,
       getMemberMap: async () => new Map(),
-      getAvatarUrl: (size = 0) => `https://q1.qlogo.cn/g?b=qq&s=${size}&nk=${userId}`,
-      toString: () => rawMessage
+      getAvatarUrl: (size = 0) => data.userAvatar || `https://q1.qlogo.cn/g?b=qq&s=${size}&nk=${userId}`,
+      toString: () => rawMessage,
+
+      // ── group / friend 代理 ──
+      ...(isGroup ? { group: makeGroupProxy(groupId), friend: undefined } : { group: undefined, friend: makeFriendProxy(userId, data.userName || 'User') })
     };
 
     e.original_msg = rawMessage;
@@ -337,10 +410,23 @@ function buildEvent(data: IPCEventMessage['data'], msgId: string) {
     return e;
   }
 
-  // ── 无原始事件时的降级构建（兼容非 OneBot 平台） ──
+  // ══════════════════════════════════════════
+  //  路径 B: 无 rawEvent → 跨平台降级构建
+  //  利用 AlemonJS 标准化字段生成最优 icqq 兼容事件
+  // ══════════════════════════════════════════
   const isGroup = !data.isPrivate;
-  const userId = parseInt(data.userId) || 10001;
-  const groupId = isGroup ? parseInt(data.spaceId) || 10002 : 0;
+  const userId = safeInt(data.userId, 10001);
+  const groupId = isGroup ? safeInt(data.spaceId, 10002) : 0;
+
+  // 构建消息段：文本 + 跨平台媒体附件
+  const messageParts: any[] = [];
+  if (data.messageText) {
+    messageParts.push({ type: 'text', text: data.messageText });
+  }
+  messageParts.push(...mediaToSegments(data.media));
+  if (messageParts.length === 0) {
+    messageParts.push({ type: 'text', text: '' });
+  }
 
   const e: any = {
     post_type: 'message',
@@ -350,10 +436,11 @@ function buildEvent(data: IPCEventMessage['data'], msgId: string) {
     sender: {
       user_id: userId,
       nickname: data.userName || 'User',
-      card: data.userName || ''
+      card: data.userName || '',
+      role: 'member'
     },
 
-    message: [{ type: 'text', text: data.messageText }],
+    message: messageParts,
     raw_message: data.messageText,
     msg: '',
 
@@ -374,12 +461,15 @@ function buildEvent(data: IPCEventMessage['data'], msgId: string) {
 
     reply,
     getMemberMap: async () => new Map(),
-    getAvatarUrl: (size = 0) => `https://q1.qlogo.cn/g?b=qq&s=${size}&nk=${userId}`,
-    toString: () => data.messageText
+    getAvatarUrl: (size = 0) => data.userAvatar || `https://q1.qlogo.cn/g?b=qq&s=${size}&nk=${userId}`,
+    toString: () => data.messageText,
+
+    // ── group / friend 代理 ──
+    ...(isGroup ? { group: makeGroupProxy(groupId), friend: undefined } : { group: undefined, friend: makeFriendProxy(userId, data.userName || 'User') })
   };
 
   e.original_msg = data.messageText;
-  e.logText = `[${isGroup ? 'Group' : 'Private'}:${isGroup ? groupId : userId}] ${data.messageText}`;
+  e.logText = `${platformTag}[${isGroup ? 'Group' : 'Private'}:${isGroup ? groupId : userId}] ${data.messageText}`;
   e.logFnc = '';
 
   return e;
@@ -452,6 +542,12 @@ async function main(): Promise<void> {
   process.on('message', async (msg: ParentToWorker) => {
     if (msg.type === 'event') {
       const e = buildEvent(msg.data, msg.id);
+      let replied = false;
+      const origReply = e.reply;
+      e.reply = async (m: any, q = false) => {
+        replied = true;
+        return origReply(m, q);
+      };
       try {
         await PluginsLoader.deal(e);
       } catch (err: any) {
@@ -462,7 +558,10 @@ async function main(): Promise<void> {
           id: msg.id,
           contents: [{ type: 'text', data: `[Yunzai 错误] ${err.message}` }]
         });
+        replied = true;
       }
+      // 通知父进程 deal 已完成
+      ipcSend({ type: 'done', id: msg.id, replied });
     } else if (msg.type === 'shutdown') {
       log('info', 'Worker 收到关闭信号，退出');
       process.exit(0);

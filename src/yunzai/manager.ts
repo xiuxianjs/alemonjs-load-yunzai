@@ -19,6 +19,7 @@ class YunzaiManager {
   private worker: ChildProcess | null = null;
   private ready = false;
   private replyHandlers = new Set<ReplyHandler>();
+  private doneHandlers = new Set<(done: any) => void>();
   private restartCount = 0;
   private maxRestarts = 3;
   private restartTimer: ReturnType<typeof setTimeout> | null = null;
@@ -193,12 +194,21 @@ class YunzaiManager {
     return () => this.replyHandlers.delete(handler);
   }
 
+  /** 注册 done 处理器（Worker deal() 完成时回调） */
+  onDone(handler: (done: any) => void): () => void {
+    this.doneHandlers.add(handler);
+    return () => this.doneHandlers.delete(handler);
+  }
+
   // ─── 内部方法 ───
 
   private handleMessage(msg: WorkerToParent): void {
     switch (msg.type) {
       case 'reply':
         for (const h of this.replyHandlers) h(msg);
+        break;
+      case 'done':
+        for (const h of this.doneHandlers) h(msg);
         break;
       case 'error':
         logger.error(`[Yunzai:worker] ${msg.message}`);
@@ -252,8 +262,14 @@ class YunzaiManager {
     const pkgPath = `${getYunzaiDir()}/package.json`;
     if (!existsSync(pkgPath)) return;
 
-    const raw = readFileSync(pkgPath, 'utf-8');
-    const pkg = JSON.parse(raw);
+    let pkg: any;
+    try {
+      const raw = readFileSync(pkgPath, 'utf-8');
+      pkg = JSON.parse(raw);
+    } catch (err: any) {
+      logger.warn(`[Yunzai] package.json 解析失败: ${err.message}`);
+      return;
+    }
     let modified = false;
 
     if (!pkg.private) {
