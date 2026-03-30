@@ -103,7 +103,7 @@ class YunzaiManager {
     this.beginTask('安装');
     try {
       logger.info(`[Yunzai] 正在克隆 ${repoUrl} ...`);
-      await this.git(['clone', '--depth', '1', repoUrl, yunzaiDir]);
+      await this.git(['clone', '--depth', '1', '--single-branch', repoUrl, yunzaiDir]);
       this.throwIfCancelled();
       this.ensureWorkspaces();
       this.throwIfCancelled();
@@ -223,7 +223,7 @@ class YunzaiManager {
       // 安装阶段
       try {
         logger.info(`[Yunzai] 正在克隆 ${repoUrl} ...`);
-        await this.git(['clone', '--depth', '1', repoUrl, yunzaiDir]);
+        await this.git(['clone', '--depth', '1', '--single-branch', repoUrl, yunzaiDir]);
         this.throwIfCancelled();
         this.ensureWorkspaces();
         this.throwIfCancelled();
@@ -463,10 +463,13 @@ class YunzaiManager {
 
   private git(args: string[], cwd?: string): Promise<string> {
     return new Promise((resolve, reject) => {
-      const cp = execFile('git', args, { cwd, timeout: 120_000 }, (err, stdout, stderr) => {
+      const cp = execFile('git', args, { cwd, timeout: 270_000 }, (err, stdout, stderr) => {
         this.taskProcess = null;
         if (err) {
-          reject(new Error(stderr ?? err.message));
+          const hint = (err as any).killed ? ' (超时)' : '';
+          const detail = stderr?.trim() ? `${stderr.trim()}\n${err.message}` : err.message;
+
+          reject(new Error(`${detail}${hint}`));
         } else {
           resolve(stdout);
         }
@@ -479,10 +482,13 @@ class YunzaiManager {
   /** 使用内置 yarn 安装依赖（原生支持 workspaces，插件子包依赖一并安装） */
   private npmInstall(cwd: string): Promise<string> {
     return new Promise((resolve, reject) => {
-      const cp = execFile(process.execPath, [YARN_PATH, 'install', '--production=false'], { cwd, timeout: 120_000 }, (err, stdout, stderr) => {
+      const cp = execFile(process.execPath, [YARN_PATH, 'install', '--production=false'], { cwd, timeout: 270_000 }, (err, stdout, stderr) => {
         this.taskProcess = null;
         if (err) {
-          reject(new Error(stderr ?? err.message));
+          const hint = (err as any).killed ? ' (超时)' : '';
+          const detail = stderr?.trim() ? `${stderr.trim()}\n${err.message}` : err.message;
+
+          reject(new Error(`${detail}${hint}`));
         } else {
           resolve(stdout);
         }
@@ -504,10 +510,10 @@ class YunzaiManager {
     }
     this.beginTask('安装插件');
     try {
-      const repoUrl = plugin.repoUrl.startsWith('https://github.com/') ? `${getGhProxy()}${plugin.repoUrl}` : plugin.repoUrl;
+      const repoUrl = `${getGhProxy()}${plugin.repoUrl}`;
 
       logger.info(`[Yunzai] 正在安装 ${plugin.label}...`);
-      await this.git(['clone', '--depth', '1', repoUrl, pluginDir]);
+      await this.git(['clone', '--depth', '1', '--single-branch', repoUrl, pluginDir]);
       this.throwIfCancelled();
       this.ensureWorkspaces();
       logger.info('[Yunzai] 正在安装插件依赖...');
