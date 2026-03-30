@@ -10,6 +10,7 @@
  */
 import fs from 'node:fs';
 import path from 'node:path';
+import { pathToFileURL } from 'node:url';
 import type { IPCEventMessage, ParentToWorker, ReplyContent } from './protocol';
 
 // ━━━━━━━━━━━━━━━ IPC 通信 ━━━━━━━━━━━━━━━
@@ -730,7 +731,7 @@ async function main(): Promise<void> {
 
   // 3. 加载 plugin 基类 → global.plugin
   try {
-    const mod = await import(path.join(cwd, 'lib', 'plugins', 'plugin.js'));
+    const mod = await import(pathToFileURL(path.join(cwd, 'lib', 'plugins', 'plugin.js')).href);
 
     (globalThis as any).plugin = mod.default ?? mod.plugin;
     log('info', 'plugin 基类加载成功');
@@ -754,7 +755,7 @@ async function main(): Promise<void> {
 
   // 4. 加载 PluginsLoader
   try {
-    const mod = await import(path.join(cwd, 'lib', 'plugins', 'loader.js'));
+    const mod = await import(pathToFileURL(path.join(cwd, 'lib', 'plugins', 'loader.js')).href);
 
     PluginsLoader = mod.default;
     log('info', 'PluginsLoader 加载成功');

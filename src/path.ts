@@ -80,9 +80,9 @@ export function getPluginInfo(alias: string): PluginInfo | undefined {
   return PLUGIN_ALIAS_MAP[alias.toLowerCase()];
 }
 
-/** Miao-Yunzai 安装目录 */
+/** Miao-Yunzai 安装目录（放在应用根目录下，避免污染 packages） */
 export function getYunzaiDir(): string {
   const botName = getConfig()?.bot_name ?? DEFAULT_BOT_NAME;
 
-  return join(PACKAGE_ROOT, botName);
+  return join(process.cwd(), botName);
 }

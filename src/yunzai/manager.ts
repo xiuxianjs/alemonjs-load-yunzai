@@ -463,7 +463,7 @@ class YunzaiManager {
 
   private git(args: string[], cwd?: string): Promise<string> {
     return new Promise((resolve, reject) => {
-      const cp = execFile('git', args, { cwd, timeout: 270_000 }, (err, stdout, stderr) => {
+      const cp = execFile('git', args, { cwd, timeout: 1_800_000 }, (err, stdout, stderr) => {
         this.taskProcess = null;
         if (err) {
           const hint = (err as any).killed ? ' (超时)' : '';
@@ -482,7 +482,7 @@ class YunzaiManager {
   /** 使用内置 yarn 安装依赖（原生支持 workspaces，插件子包依赖一并安装） */
   private npmInstall(cwd: string): Promise<string> {
     return new Promise((resolve, reject) => {
-      const cp = execFile(process.execPath, [YARN_PATH, 'install', '--production=false'], { cwd, timeout: 270_000 }, (err, stdout, stderr) => {
+      const cp = execFile(process.execPath, [YARN_PATH, 'install', '--production=false'], { cwd, timeout: 1_800_000 }, (err, stdout, stderr) => {
         this.taskProcess = null;
         if (err) {
           const hint = (err as any).killed ? ' (超时)' : '';
