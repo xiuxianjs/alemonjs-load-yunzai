@@ -4,8 +4,10 @@ declare class YunzaiManager {
     private worker;
     private ready;
     private replyHandlers;
+    private doneHandlers;
     private restartCount;
     private maxRestarts;
+    private restartTimer;
     get isInstalled(): boolean;
     get isRunning(): boolean;
     get isReady(): boolean;
@@ -17,11 +19,13 @@ declare class YunzaiManager {
     restart(): Promise<void>;
     send(msg: ParentToWorker): void;
     onReply(handler: ReplyHandler): () => void;
+    onDone(handler: (done: any) => void): () => void;
     private handleMessage;
     private git;
     private npmInstall;
     installDeps(): Promise<string>;
     private ensureWorkspaces;
+    private ensureMiaoPlugin;
 }
 export declare const manager: YunzaiManager;
 export {};
