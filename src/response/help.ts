@@ -9,10 +9,6 @@ export default async (e: any, next: () => void) => {
     next();
     return;
   }
-  if (!event.IsMaster) {
-    next();
-    return;
-  }
   const [message] = useMessage(event);
   const fmt = Format.create();
   fmt.addText(

@@ -31,7 +31,7 @@ export default defineChildren({
       try {
         await manager.start();
       } catch (err: any) {
-        logger.error(`[Yunzai] Worker 启动失败: ${err.message}`);
+        logger.error(`[Yunzai] Worker 启动失败: ${err?.message}`);
       }
     } else {
       logger.info('[Yunzai] 未安装。发送 #yz安装 进行安装');

@@ -19,6 +19,8 @@ export interface IPCEventMessage {
     spaceId: string;
     isPrivate: boolean;
     isMaster: boolean;
+    /** 原始 OneBot 标准事件对象（可选，来自 e.value） */
+    rawEvent?: any;
   };
 }
 

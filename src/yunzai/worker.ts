@@ -30,21 +30,21 @@ function injectGlobals(): void {
   // ── logger ──
   const identity = (s: any) => String(s);
   g.logger = {
-    info:  (...a: any[]) => log('info',  ...a.map(String)),
-    warn:  (...a: any[]) => log('warn',  ...a.map(String)),
+    info: (...a: any[]) => log('info', ...a.map(String)),
+    warn: (...a: any[]) => log('warn', ...a.map(String)),
     error: (...a: any[]) => log('error', ...a.map(String)),
     debug: (...a: any[]) => log('debug', ...a.map(String)),
-    mark:  (...a: any[]) => log('info',  '[MARK]', ...a.map(String)),
+    mark: (...a: any[]) => log('info', '[MARK]', ...a.map(String)),
     trace: (...a: any[]) => log('debug', '[TRACE]', ...a.map(String)),
     fatal: (...a: any[]) => log('error', '[FATAL]', ...a.map(String)),
     // chalk 颜色方法（子进程无终端色彩，透传原文）
-    chalk:   { red: identity, green: identity, yellow: identity, blue: identity, magenta: identity, cyan: identity },
-    red:     identity,
-    green:   identity,
-    yellow:  identity,
-    blue:    identity,
+    chalk: { red: identity, green: identity, yellow: identity, blue: identity, magenta: identity, cyan: identity },
+    red: identity,
+    green: identity,
+    yellow: identity,
+    blue: identity,
     magenta: identity,
-    cyan:    identity,
+    cyan: identity
   };
 
   // ── redis (内存模拟，支持 String / Hash / Sorted Set) ──
@@ -54,26 +54,37 @@ function injectGlobals(): void {
 
   g.redis = {
     // ─ String ─
-    get:    async (k: string) => store.get(k) ?? null,
-    set:    async (k: string, v: any, _opts?: any) => { store.set(k, String(v)); return 'OK'; },
-    del:    async (k: string) => { store.delete(k); hStore.delete(k); zStore.delete(k); return 1; },
-    keys:   async (p: string) => {
+    get: async (k: string) => store.get(k) ?? null,
+    set: async (k: string, v: any, _opts?: any) => {
+      store.set(k, String(v));
+      return 'OK';
+    },
+    del: async (k: string) => {
+      store.delete(k);
+      hStore.delete(k);
+      zStore.delete(k);
+      return 1;
+    },
+    keys: async (p: string) => {
       const re = new RegExp('^' + p.replace(/[.+^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '.*') + '$');
       const all = new Set([...store.keys(), ...hStore.keys(), ...zStore.keys()]);
       return [...all].filter(k => re.test(k));
     },
-    exists: async (k: string) => (store.has(k) || hStore.has(k) || zStore.has(k)) ? 1 : 0,
+    exists: async (k: string) => (store.has(k) || hStore.has(k) || zStore.has(k) ? 1 : 0),
     expire: async () => 1,
-    incr:   async (k: string) => {
+    incr: async (k: string) => {
       const v = parseInt(store.get(k) || '0') + 1;
       store.set(k, String(v));
       return v;
     },
-    setEx:  async (k: string, _ttl: number, v: any) => { store.set(k, String(v)); return 'OK'; },
+    setEx: async (k: string, _ttl: number, v: any) => {
+      store.set(k, String(v));
+      return 'OK';
+    },
     sendCommand: async () => null,
-    connect:     async () => {},
-    disconnect:  async () => {},
-    save:        async () => 'OK',
+    connect: async () => {},
+    disconnect: async () => {},
+    save: async () => 'OK',
 
     // ─ Hash ─
     hGet: async (k: string, f: string) => hStore.get(k)?.get(f) ?? null,
@@ -136,9 +147,12 @@ function injectGlobals(): void {
       const arr = zStore.get(k);
       if (!arr) return 0;
       const idx = arr.findIndex(i => i.value === v);
-      if (idx >= 0) { arr.splice(idx, 1); return 1; }
+      if (idx >= 0) {
+        arr.splice(idx, 1);
+        return 1;
+      }
       return 0;
-    },
+    }
   };
 
   // ── Bot 空壳 ──
@@ -150,36 +164,36 @@ function injectGlobals(): void {
     gl: new Map(),
     gml: new Map(),
     getFriendMap: () => botInstance.fl,
-    getGroupMap:  () => botInstance.gl,
+    getGroupMap: () => botInstance.gl,
     pickFriend: (uid: number) => ({
       sendMsg: async () => ({}),
-      user_id: uid,
+      user_id: uid
     }),
     pickGroup: (gid: number) => ({
       sendMsg: async () => ({}),
       group_id: gid,
-      pickMember: () => ({ info: {} }),
+      pickMember: () => ({ info: {} })
     }),
     pickUser: (uid: number) => ({
       sendMsg: async () => ({}),
-      user_id: uid,
+      user_id: uid
     }),
-    sendPrivateMsg: async () => ({}),
+    sendPrivateMsg: async () => ({})
   };
   g.Bot = new Proxy(botInstance, {
     get(target, prop) {
       // Bot[uin] → 返回 bot 自身（Yunzai 用 Bot[e.self_id] 取实例）
       if (typeof prop === 'string' && /^\d+$/.test(prop)) return target;
       return target[prop];
-    },
+    }
   });
 
   // ── segment (icqq 消息段构造) ──
   g.segment = {
     image: (file: any) => ({ type: 'image', file }),
-    at:    (qq: number) => ({ type: 'at', qq }),
-    face:  (id: number) => ({ type: 'face', id }),
-    text:  (text: string) => ({ type: 'text', text }),
+    at: (qq: number) => ({ type: 'at', qq }),
+    face: (id: number) => ({ type: 'face', id }),
+    text: (text: string) => ({ type: 'text', text })
   };
 }
 
@@ -198,9 +212,7 @@ function serializeReply(msg: any): ReplyContent[] {
   if (msg && typeof msg === 'object') {
     switch (msg.type) {
       case 'image': {
-        const file = Buffer.isBuffer(msg.file)
-          ? msg.file.toString('base64')
-          : String(msg.file);
+        const file = Buffer.isBuffer(msg.file) ? msg.file.toString('base64') : String(msg.file);
         return [{ type: 'image', data: file }];
       }
       case 'at':
@@ -218,60 +230,155 @@ function serializeReply(msg: any): ReplyContent[] {
 
 // ━━━━━━━━━━━━━━━ 构建 icqq 事件 ━━━━━━━━━━━━━━━
 
+/** 从 OneBot message 段中提取纯文本 */
+function extractText(message: any[]): string {
+  return message
+    .filter((s: any) => s.type === 'text')
+    .map((s: any) => s.data?.text ?? s.text ?? '')
+    .join('')
+    .trim();
+}
+
+/** 检测消息段中是否 at 了 self_id */
+function detectAtMe(message: any[], selfId: number): boolean {
+  return message.some((s: any) => s.type === 'at' && (String(s.data?.qq ?? s.qq) === String(selfId) || s.data?.qq === 'all' || s.qq === 'all'));
+}
+
+/** 检测消息段中是否 at all */
+function detectAtAll(message: any[]): boolean {
+  return message.some((s: any) => s.type === 'at' && (s.data?.qq === 'all' || s.qq === 'all'));
+}
+
 function buildEvent(data: IPCEventMessage['data'], msgId: string) {
-  const isGroup = !data.isPrivate;
-  const userId  = parseInt(data.userId) || 10001;
-  const groupId = isGroup ? (parseInt(data.spaceId) || 10002) : 0;
+  const raw = data.rawEvent;
+  const selfId = (globalThis as any).Bot?.uin || 10000;
 
-  const e: any = {
-    post_type:    'message',
-    message_type: isGroup ? 'group' : 'private',
-    sub_type:     isGroup ? 'normal' : 'friend',
-    user_id:      userId,
-    sender: {
-      user_id:  userId,
-      nickname: data.userName || 'User',
-      card:     data.userName || '',
-    },
-
-    message:     [{ type: 'text', text: data.messageText }],
-    raw_message: data.messageText,
-    msg:         '',
-
-    group_id:    groupId,
-    group_name:  isGroup ? `Group ${groupId}` : '',
-
-    isMaster: data.isMaster,
-    isOwner:  data.isMaster,
-    isAdmin:  data.isMaster,
-
-    seq:     Date.now(),
-    rand:    Math.random(),
-    time:    Math.floor(Date.now() / 1000),
-    self_id: (globalThis as any).Bot?.uin || 10000,
-    font:    '',
-    atme:    false,
-    atall:   false,
-
-    // ── reply: 通过 IPC 回传 ──
-    reply: async (msg: any, _quote = false) => {
-      const contents = serializeReply(msg);
-      log('info', `[reply] id=${msgId} contents=${JSON.stringify(contents).slice(0, 200)}`);
-      ipcSend({
-        type: 'reply',
-        id: msgId,
-        contents,
-      });
-      return { message_id: `reply_${Date.now()}` };
-    },
-
-    getMemberMap: async () => new Map(),
-    getAvatarUrl: (size = 0) =>
-      `https://q1.qlogo.cn/g?b=qq&s=${size}&nk=${userId}`,
-    toString: () => data.messageText,
+  // ── IPC 回复函数（始终覆盖） ──
+  const reply = async (msg: any, _quote = false) => {
+    const contents = serializeReply(msg);
+    log('debug', `[reply] id=${msgId} contents=${JSON.stringify(contents).slice(0, 200)}`);
+    ipcSend({ type: 'reply', id: msgId, contents });
+    return { message_id: `reply_${Date.now()}` };
   };
 
-  e.original_msg = e.msg;
+  // ── 有原始 OneBot 事件时，直接基于真实数据构建 ──
+  if (raw && typeof raw === 'object' && raw.post_type) {
+    const isGroup = raw.message_type === 'group';
+    const userId = (raw.user_id ?? parseInt(data.userId)) || 10001;
+    const groupId = raw.group_id ?? (isGroup ? parseInt(data.spaceId) || 0 : 0);
+    const message: any[] = Array.isArray(raw.message) ? raw.message : [{ type: 'text', text: data.messageText }];
+
+    // OneBot 消息段格式兼容：icqq 用 {type, text/qq/id/file}，部分 OneBot 用 {type, data:{text/qq/...}}
+    // 统一展平 data 字段到顶层，方便 Yunzai 插件访问
+    const normalizedMessage = message.map((seg: any) => {
+      if (seg.data && typeof seg.data === 'object') {
+        return { type: seg.type, ...seg.data };
+      }
+      return seg;
+    });
+
+    const rawMessage = raw.raw_message ?? extractText(normalizedMessage);
+    const atme = detectAtMe(normalizedMessage, selfId);
+    const atall = detectAtAll(normalizedMessage);
+
+    const e: any = {
+      // ── OneBot 标准字段（来自原始事件） ──
+      post_type: raw.post_type || 'message',
+      message_type: raw.message_type || (isGroup ? 'group' : 'private'),
+      sub_type: raw.sub_type || (isGroup ? 'normal' : 'friend'),
+      message_id: raw.message_id,
+      user_id: userId,
+      group_id: groupId,
+      group_name: raw.group_name || (isGroup ? `Group ${groupId}` : ''),
+      self_id: raw.self_id || selfId,
+      time: raw.time || Math.floor(Date.now() / 1000),
+      seq: raw.message_seq ?? raw.seq ?? Date.now(),
+      rand: raw.rand ?? Math.random(),
+      font: raw.font || '',
+
+      // ── 消息内容 ──
+      message: normalizedMessage,
+      raw_message: rawMessage,
+      msg: '', // Yunzai dealMsg 会重新赋值
+
+      // ── 发送者信息（保留原始 sender） ──
+      sender: {
+        user_id: userId,
+        nickname: raw.sender?.nickname || data.userName || 'User',
+        card: raw.sender?.card || raw.sender?.nickname || data.userName || '',
+        role: raw.sender?.role || 'member',
+        level: raw.sender?.level,
+        title: raw.sender?.title || '',
+        sex: raw.sender?.sex,
+        age: raw.sender?.age,
+        area: raw.sender?.area
+      },
+
+      // ── at 检测 ──
+      atme,
+      atall,
+
+      // ── 权限（AlemonJS 侧判定） ──
+      isMaster: data.isMaster,
+      isOwner: data.isMaster,
+      isAdmin: data.isMaster || raw.sender?.role === 'admin' || raw.sender?.role === 'owner',
+
+      // ── 方法 ──
+      reply,
+      getMemberMap: async () => new Map(),
+      getAvatarUrl: (size = 0) => `https://q1.qlogo.cn/g?b=qq&s=${size}&nk=${userId}`,
+      toString: () => rawMessage
+    };
+
+    e.original_msg = rawMessage;
+    e.logText = `[${isGroup ? 'Group' : 'Private'}:${isGroup ? groupId : userId}] ${rawMessage}`;
+    e.logFnc = '';
+
+    return e;
+  }
+
+  // ── 无原始事件时的降级构建（兼容非 OneBot 平台） ──
+  const isGroup = !data.isPrivate;
+  const userId = parseInt(data.userId) || 10001;
+  const groupId = isGroup ? parseInt(data.spaceId) || 10002 : 0;
+
+  const e: any = {
+    post_type: 'message',
+    message_type: isGroup ? 'group' : 'private',
+    sub_type: isGroup ? 'normal' : 'friend',
+    user_id: userId,
+    sender: {
+      user_id: userId,
+      nickname: data.userName || 'User',
+      card: data.userName || ''
+    },
+
+    message: [{ type: 'text', text: data.messageText }],
+    raw_message: data.messageText,
+    msg: '',
+
+    group_id: groupId,
+    group_name: isGroup ? `Group ${groupId}` : '',
+
+    isMaster: data.isMaster,
+    isOwner: data.isMaster,
+    isAdmin: data.isMaster,
+
+    seq: Date.now(),
+    rand: Math.random(),
+    time: Math.floor(Date.now() / 1000),
+    self_id: selfId,
+    font: '',
+    atme: false,
+    atall: false,
+
+    reply,
+    getMemberMap: async () => new Map(),
+    getAvatarUrl: (size = 0) => `https://q1.qlogo.cn/g?b=qq&s=${size}&nk=${userId}`,
+    toString: () => data.messageText
+  };
+
+  e.original_msg = data.messageText;
   e.logText = `[${isGroup ? 'Group' : 'Private'}:${isGroup ? groupId : userId}] ${data.messageText}`;
   e.logFnc = '';
 
@@ -303,11 +410,18 @@ async function main(): Promise<void> {
   } catch (err: any) {
     log('warn', `plugin 基类加载失败，使用内置空壳: ${err.message}`);
     (globalThis as any).plugin = class {
-      name = 'plugin'; dsc = ''; event = 'message'; priority = 5000;
+      name = 'plugin';
+      dsc = '';
+      event = 'message';
+      priority = 5000;
       rule: any[] = [];
       e: any = null;
-      constructor(opt: any = {}) { Object.assign(this, opt); }
-      reply(msg: any, quote?: boolean) { return this.e?.reply?.(msg, quote); }
+      constructor(opt: any = {}) {
+        Object.assign(this, opt);
+      }
+      reply(msg: any, quote?: boolean) {
+        return this.e?.reply?.(msg, quote);
+      }
     };
   }
 
@@ -346,7 +460,7 @@ async function main(): Promise<void> {
         ipcSend({
           type: 'reply',
           id: msg.id,
-          contents: [{ type: 'text', data: `[Yunzai 错误] ${err.message}` }],
+          contents: [{ type: 'text', data: `[Yunzai 错误] ${err.message}` }]
         });
       }
     } else if (msg.type === 'shutdown') {
@@ -356,7 +470,7 @@ async function main(): Promise<void> {
   });
 }
 
-main().catch((err) => {
+main().catch(err => {
   log('error', `Worker 启动失败: ${err.message}`);
   process.exit(1);
 });

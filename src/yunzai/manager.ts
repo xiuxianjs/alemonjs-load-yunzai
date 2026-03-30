@@ -10,7 +10,7 @@ import { logger } from 'alemonjs';
 import type { ChildProcess } from 'node:child_process';
 import { execFile, fork } from 'node:child_process';
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
-import { DEFAULT_REPO, WORKER_PATH, YARN_PATH, YUNZAI_DIR } from '../path';
+import { getDefaultRepo, getMiaoPluginRepo, getYunzaiDir, WORKER_PATH, YARN_PATH } from '../path';
 import type { IPCReply, ParentToWorker, WorkerToParent } from './protocol';
 
 type ReplyHandler = (reply: IPCReply) => void;
@@ -21,11 +21,12 @@ class YunzaiManager {
   private replyHandlers = new Set<ReplyHandler>();
   private restartCount = 0;
   private maxRestarts = 3;
+  private restartTimer: ReturnType<typeof setTimeout> | null = null;
 
   // ─── 状态查询 ───
 
   get isInstalled(): boolean {
-    return existsSync(YUNZAI_DIR);
+    return existsSync(getYunzaiDir());
   }
 
   get isRunning(): boolean {
@@ -45,23 +46,25 @@ class YunzaiManager {
 
   // ─── Git 操作 ───
 
-  async install(repoUrl = DEFAULT_REPO): Promise<void> {
+  async install(repoUrl = getDefaultRepo()): Promise<void> {
+    const yunzaiDir = getYunzaiDir();
     if (this.isInstalled) {
-      throw new Error(`Yunzai 已安装在 ${YUNZAI_DIR}`);
+      throw new Error(`Yunzai 已安装在 ${yunzaiDir}`);
     }
 
     logger.info(`[Yunzai] 正在克隆 ${repoUrl} ...`);
-    await this.git(['clone', '--depth', '1', repoUrl, YUNZAI_DIR]);
+    await this.git(['clone', '--depth', '1', repoUrl, yunzaiDir]);
     this.ensureWorkspaces();
+    await this.ensureMiaoPlugin();
     logger.info('[Yunzai] 克隆完成，正在安装依赖...');
-    await this.npmInstall(YUNZAI_DIR);
+    await this.npmInstall(yunzaiDir);
     logger.info('[Yunzai] 依赖安装完成');
   }
 
   async update(): Promise<string> {
     if (!this.isInstalled) throw new Error('Yunzai 未安装');
     logger.info('[Yunzai] 正在拉取更新...');
-    const out = await this.git(['pull'], YUNZAI_DIR);
+    const out = await this.git(['pull'], getYunzaiDir());
     logger.info('[Yunzai] 更新完成');
     return out;
   }
@@ -75,12 +78,15 @@ class YunzaiManager {
       return;
     }
 
+    // 启动前检查 miao-plugin
+    await this.ensureMiaoPlugin();
+
     this.ready = false;
 
     this.worker = fork(WORKER_PATH, [], {
-      cwd: YUNZAI_DIR,
+      cwd: getYunzaiDir(),
       stdio: ['pipe', 'pipe', 'pipe', 'ipc'],
-      env: { ...process.env, YUNZAI_DIR }
+      env: { ...process.env, YUNZAI_DIR: getYunzaiDir() }
     });
 
     // 转发子进程标准输出
@@ -109,7 +115,10 @@ class YunzaiManager {
       if (code !== 0 && this.restartCount < this.maxRestarts) {
         this.restartCount++;
         logger.info(`[Yunzai] 自动重启 (${this.restartCount}/${this.maxRestarts})...`);
-        setTimeout(() => this.start(), 3000);
+        this.restartTimer = setTimeout(() => {
+          this.restartTimer = null;
+          this.start();
+        }, 3000);
       }
     });
 
@@ -143,6 +152,11 @@ class YunzaiManager {
 
     this.ready = false;
     this.restartCount = this.maxRestarts; // 阻止自动重启
+
+    if (this.restartTimer) {
+      clearTimeout(this.restartTimer);
+      this.restartTimer = null;
+    }
 
     this.send({ type: 'shutdown' });
 
@@ -223,8 +237,9 @@ class YunzaiManager {
   async installDeps(): Promise<string> {
     if (!this.isInstalled) throw new Error('Yunzai 未安装');
     this.ensureWorkspaces();
+    await this.ensureMiaoPlugin();
     logger.info('[Yunzai] 正在安装依赖...');
-    const out = await this.npmInstall(YUNZAI_DIR);
+    const out = await this.npmInstall(getYunzaiDir());
     logger.info('[Yunzai] 依赖安装完成');
     return out;
   }
@@ -234,7 +249,7 @@ class YunzaiManager {
    * Yarn 1.x 要求 private: true 才能启用 workspaces
    */
   private ensureWorkspaces(): void {
-    const pkgPath = `${YUNZAI_DIR}/package.json`;
+    const pkgPath = `${getYunzaiDir()}/package.json`;
     if (!existsSync(pkgPath)) return;
 
     const raw = readFileSync(pkgPath, 'utf-8');
@@ -256,6 +271,16 @@ class YunzaiManager {
     if (modified) {
       writeFileSync(pkgPath, JSON.stringify(pkg, null, 2) + '\n', 'utf-8');
     }
+  }
+
+  /** 检查并安装 miao-plugin（必装插件） */
+  private async ensureMiaoPlugin(): Promise<void> {
+    const pluginDir = `${getYunzaiDir()}/plugins/miao-plugin`;
+    if (existsSync(pluginDir)) return;
+
+    logger.info('[Yunzai] miao-plugin 未安装，正在克隆...');
+    await this.git(['clone', '--depth', '1', getMiaoPluginRepo(), pluginDir]);
+    logger.info('[Yunzai] miao-plugin 安装完成');
   }
 }
 

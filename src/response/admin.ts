@@ -2,7 +2,7 @@
  * Yunzai 管理指令（仅限主人使用）
  */
 import { createEvent, Format, useMessage } from 'alemonjs';
-import { DEFAULT_REPO } from '../path';
+import { getDefaultRepo } from '../path';
 import { manager } from '../yunzai/manager';
 
 export default async (e: any, next: () => void) => {
@@ -31,7 +31,7 @@ export default async (e: any, next: () => void) => {
       await manager.installDeps();
       message.send({ format: Format.create().addText('依赖安装完成，建议 #yz重启') });
     } else if (cmd.startsWith('安装')) {
-      const repo = cmd.replace('安装', '').trim() || DEFAULT_REPO;
+      const repo = cmd.replace('安装', '').trim() || getDefaultRepo();
       fmt.addText(`正在安装 Yunzai...\n仓库: ${repo}`);
       message.send({ format: fmt });
       await manager.install(repo);
