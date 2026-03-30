@@ -6,6 +6,7 @@
  * 3. 通过 IPC 发送给 Worker 子进程
  * 4. 异步接收 Worker 回复（支持多次 reply），通过 AlemonJS Format 发送
  */
+import { isMaster } from '@src/utils';
 import { EventsEnum, Format, logger, Next, useMessage } from 'alemonjs';
 import { manager } from './manager';
 import type { IPCDone, IPCMedia, IPCReply } from './protocol';
@@ -157,6 +158,8 @@ function extractRawEvent(event: any, rawE: any): any {
 }
 
 export default (e: EventsEnum, next: Next) => {
+  e.IsMaster = e.IsMaster ?? isMaster(e?.UserId, e?.Platform);
+
   if (!manager.isReady) {
     next();
 

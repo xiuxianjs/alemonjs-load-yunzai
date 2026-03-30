@@ -5,6 +5,6 @@
  * bridge   — AlemonJS handler → IPC → Worker
  * protocol — IPC 消息类型定义
  */
-export { manager } from './manager';
 export { default as yunzaiBridge } from './bridge';
+export { manager } from './manager';
 export type * from './protocol';
