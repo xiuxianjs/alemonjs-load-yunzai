@@ -26,7 +26,20 @@ export interface IPCEventMessage {
 export interface IPCShutdown {
     type: 'shutdown';
 }
-export type ParentToWorker = IPCEventMessage | IPCShutdown;
+export interface IPCApiResponse {
+    type: 'api_response';
+    reqId: string;
+    ok: boolean;
+    data?: any;
+    error?: string;
+}
+export interface IPCReplyResult {
+    type: 'reply_result';
+    replyId: string;
+    messageId?: string;
+    ok: boolean;
+}
+export type ParentToWorker = IPCEventMessage | IPCShutdown | IPCApiResponse | IPCReplyResult;
 export interface IPCReady {
     type: 'ready';
     pluginCount: number;
@@ -34,6 +47,7 @@ export interface IPCReady {
 export interface IPCReply {
     type: 'reply';
     id: string;
+    replyId: string;
     contents: ReplyContent[];
 }
 export interface IPCError {
@@ -50,8 +64,14 @@ export interface IPCDone {
     id: string;
     replied: boolean;
 }
-export type WorkerToParent = IPCReady | IPCReply | IPCError | IPCLog | IPCDone;
+export interface IPCApiRequest {
+    type: 'api';
+    reqId: string;
+    action: string;
+    params: Record<string, any>;
+}
+export type WorkerToParent = IPCReady | IPCReply | IPCError | IPCLog | IPCDone | IPCApiRequest;
 export interface ReplyContent {
-    type: 'text' | 'image' | 'at' | 'face' | 'forward' | 'other';
+    type: 'text' | 'image' | 'at' | 'face' | 'forward' | 'record' | 'video' | 'other';
     data: string;
 }

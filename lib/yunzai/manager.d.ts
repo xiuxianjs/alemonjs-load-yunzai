@@ -1,11 +1,13 @@
 import type { PluginInfo } from '../path';
-import type { IPCReply, ParentToWorker } from './protocol';
+import type { IPCApiRequest, IPCReply, ParentToWorker } from './protocol';
 type ReplyHandler = (reply: IPCReply) => void;
+type ApiRequestHandler = (req: IPCApiRequest) => void;
 declare class YunzaiManager {
     private worker;
     private ready;
     private replyHandlers;
     private doneHandlers;
+    private apiRequestHandlers;
     private restartCount;
     private maxRestarts;
     private restartTimer;
@@ -27,11 +29,14 @@ declare class YunzaiManager {
     restart(): Promise<void>;
     installAndStart(repoUrl?: string): Promise<void>;
     uninstall(): Promise<void>;
+    private syncRedisConfig;
     private startInternal;
     private stopInternal;
     send(msg: ParentToWorker): void;
     onReply(handler: ReplyHandler): () => void;
     onDone(handler: (done: any) => void): () => void;
+    onApiRequest(handler: ApiRequestHandler): () => void;
+    sendToWorker(msg: ParentToWorker): void;
     private handleMessage;
     private beginTask;
     private endTask;

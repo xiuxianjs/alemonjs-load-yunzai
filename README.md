@@ -1,10 +1,10 @@
 # 阿柠檬-加载Yunzai
 
-将 Miao-Yunzai 作为 AlemonJS 插件包加载。
+这是一个桥接层，通过进程隔离 + IPC 协议，将 Yunzai-Bot 生态无缝桥接到现代 AlemonJS 框架上，同时提供了完整的安装管理、插件管理和跨平台消息适配能力。设计上做到了与 Yunzai 运行时的完全解耦。
 
-- **完全隔离** — Worker 以 `child_process.fork()` 启动，独立 V8 堆、CWD、全局变量
-- **IPC 通信** — 父子进程通过 Node.js 内置 IPC 通道收发结构化消息
-- **内置 yarn** — 依赖安装使用内置的 Yarn 1.x，原生支持 `workspaces`
+- 尽可能的兼容所有效果，因此版本需要 ⚠️ `alemonjs` >= v2.1.46
+
+- 是OneBot优先的，确保最大程度上适用于所有Yunzai插件，其他平台适配情况则完全依赖于框架的通用模型
 
 ## 管理指令
 
@@ -29,12 +29,6 @@ master_key:
 
 ```sh
 https://github.com/xiuxianjs/alemonjs-load-yunzai.git
-```
-
-若访问受限，可使用如下加速地址
-
-```sh
-https://ghfast.top/https://github.com/xiuxianjs/alemonjs-load-yunzai.git
 ```
 
 - branch
