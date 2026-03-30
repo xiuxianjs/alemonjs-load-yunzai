@@ -1308,7 +1308,15 @@ function buildEvent(data: IPCEventMessage['data'], msgId: string) {
       }, 8_000);
     });
 
-    ipcSend({ type: 'reply', id: msgId, replyId, contents });
+    ipcSend({
+      type: 'reply',
+      id: msgId,
+      replyId,
+      contents,
+      channelId: data.spaceId || undefined,
+      userId: data.userId || undefined,
+      isPrivate: data.isPrivate
+    });
 
     return resultPromise;
   };

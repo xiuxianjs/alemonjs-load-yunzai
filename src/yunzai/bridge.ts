@@ -69,8 +69,10 @@ const pending = new Map<
 
 /** 滑动窗口超时：最后一次 reply 后 8s 清理 */
 const REPLY_IDLE_TIMEOUT = 8_000;
-/** 绝对超时：消息发出后 120s 必须清理，防泄漏 */
-const REPLY_MAX_TIMEOUT = 120_000;
+/** deal() 完成后的延长超时：插件可能通过定时器/上下文继续 reply（如扫码登录） */
+const POST_DONE_TIMEOUT = 5 * 60_000;
+/** 绝对超时：消息发出后 8 分钟必须清理，防泄漏 */
+const REPLY_MAX_TIMEOUT = 8 * 60_000;
 
 let idCounter = 0;
 let listenerBound = false;
@@ -86,12 +88,58 @@ function bindReplyListener(): void {
 
   manager.onReply((reply: IPCReply) => {
     logger.info(`[bridge] 收到 reply id=${reply.id} replyId=${reply.replyId} contents=${reply.contents.length}`);
-    const ctx = pending.get(reply.id);
+    let ctx = pending.get(reply.id);
 
+    // pending 已被清理但 msgEvents 仍存在 → 重建发送上下文（支持长时间异步插件如扫码登录）
     if (!ctx) {
-      logger.warn(`[bridge] pending 中未找到 id=${reply.id}`);
+      const event = msgEvents.get(reply.id);
 
-      return;
+      if (event) {
+        const [message] = useMessage(event);
+
+        ctx = {
+          message,
+          timer: setTimeout(() => cleanPending(reply.id), POST_DONE_TIMEOUT),
+          maxTimer: setTimeout(() => cleanPending(reply.id), REPLY_MAX_TIMEOUT)
+        };
+        pending.set(reply.id, ctx);
+        logger.info(`[bridge] 从 msgEvents 重建 pending id=${reply.id}`);
+      } else {
+        // pending 和 msgEvents 均已过期 → 降级使用 sendToChannel / sendToUser
+        if (reply.channelId || reply.userId) {
+          logger.info(`[bridge] pending/msgEvents 均过期，降级直发 id=${reply.id} private=${reply.isPrivate}`);
+          const format = contentsToFormat(reply.contents);
+          const targetChannel = reply.channelId ?? '';
+          const targetUser = reply.userId ?? '';
+          const sendFn = reply.isPrivate ? () => sendToUser(targetUser, format.value) : () => sendToChannel(targetChannel, format.value);
+
+          void sendFn()
+            .then((res: any) => {
+              manager.sendToWorker({
+                type: 'reply_result',
+                replyId: reply.replyId,
+                messageId: res?.MessageId ?? res?.message_id ?? undefined,
+                ok: true
+              });
+            })
+            .catch(() => {
+              manager.sendToWorker({
+                type: 'reply_result',
+                replyId: reply.replyId,
+                ok: false
+              });
+            });
+        } else {
+          logger.warn(`[bridge] pending/msgEvents 均未找到且无路由信息 id=${reply.id}`);
+          manager.sendToWorker({
+            type: 'reply_result',
+            replyId: reply.replyId,
+            ok: false
+          });
+        }
+
+        return;
+      }
     }
 
     // 重置滑动窗口计时器（支持多次 reply）
@@ -121,7 +169,7 @@ function bindReplyListener(): void {
   });
 }
 
-/** 清理 pending 条目及其所有定时器，同时清理关联的 msgEvents */
+/** 清理 pending 条目及其所有定时器 */
 function cleanPending(id: string): void {
   const ctx = pending.get(id);
 
@@ -131,7 +179,17 @@ function cleanPending(id: string): void {
   clearTimeout(ctx.timer);
   clearTimeout(ctx.maxTimer);
   pending.delete(id);
+}
+
+/** 清理 msgEvents 条目 */
+function cleanMsgEvent(id: string): void {
   msgEvents.delete(id);
+}
+
+/** 清理 pending + msgEvents */
+function cleanAll(id: string): void {
+  cleanPending(id);
+  cleanMsgEvent(id);
 }
 
 /** 绑定 Worker done 监听（仅一次） */
@@ -150,10 +208,14 @@ function bindDoneListener(): void {
 
     if (!done.replied) {
       // 无插件匹配 → 立即清理，不再等超时
-      cleanPending(done.id);
+      cleanAll(done.id);
+    } else {
+      // 有 reply 的情况：deal() 已返回但插件可能通过定时器继续 reply
+      // （如扫码登录：deal()返回 → 等用户扫码 → 20s后继续 reply）
+      // 将 idle 超时从 8s 延长到 60s，给异步插件足够时间
+      clearTimeout(ctx.timer);
+      ctx.timer = setTimeout(() => cleanPending(done.id), POST_DONE_TIMEOUT);
     }
-    // 有 reply 的情况：保留 pending 等待滑动窗口超时
-    // （插件的 reply 和 done 可能交错到达）
   });
 }
 
@@ -169,7 +231,9 @@ function bindExitListener(): void {
     for (const id of pending.keys()) {
       cleanPending(id);
     }
-    logger.debug(`[bridge] Worker 退出，已清理 pending=${pending.size} msgEvents=${msgEvents.size}`);
+    // 同时清理所有 msgEvents
+    msgEvents.clear();
+    logger.debug('[bridge] Worker 退出，已清理 pending 和 msgEvents');
   });
 }
 
@@ -789,6 +853,8 @@ export default (e: EventsEnum, next: Next) => {
 
   // 按 msgId 精确存储事件引用（解决同平台并发消息上下文错乱）
   msgEvents.set(id, e);
+  // msgEvents 独立于 pending 生命周期，用 REPLY_MAX_TIMEOUT 确保不泄漏
+  setTimeout(() => cleanMsgEvent(id), REPLY_MAX_TIMEOUT);
 
   // 为所有事件设置回复上下文
   // useMessage 内部仅检查 event 是对象，平台适配器决定能否实际发送

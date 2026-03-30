@@ -108,6 +108,10 @@ export interface IPCReply {
   replyId: string;
   /** 回复内容列表（一次 reply 可能有多个 segment） */
   contents: ReplyContent[];
+  /** 目标路由信息（用于 pending/msgEvents 均过期时的降级发送） */
+  channelId?: string;
+  userId?: string;
+  isPrivate?: boolean;
 }
 
 /** Worker 报告错误 */
