@@ -165,14 +165,23 @@ class YunzaiManager {
     }
   }
 
-  async update(): Promise<string> {
+  async update(force = false): Promise<string> {
     if (!this.isInstalled) {
       throw new Error('Yunzai 未安装');
     }
     this.beginTask('更新');
     try {
+      const dir = getYunzaiDir();
+
+      if (force) {
+        logger.info('[Yunzai] 强制重置本地更改...');
+        await this.git(['fetch', '--all'], dir);
+        this.throwIfCancelled();
+        await this.git(['reset', '--hard', 'origin/HEAD'], dir);
+        this.throwIfCancelled();
+      }
       logger.info('[Yunzai] 正在拉取更新...');
-      const out = await this.git(['pull'], getYunzaiDir());
+      const out = await this.git(['pull'], dir);
 
       this.throwIfCancelled();
       logger.info('[Yunzai] 更新完成');
@@ -184,7 +193,7 @@ class YunzaiManager {
   }
 
   /** 更新代码 + 重装依赖（如正在运行则先停后启，全程单锁） */
-  async updateAll(): Promise<string> {
+  async updateAll(force = false): Promise<string> {
     if (!this.isInstalled) {
       throw new Error('Yunzai 未安装');
     }
@@ -196,8 +205,17 @@ class YunzaiManager {
         await this.stopInternal();
       }
       this.throwIfCancelled();
+      const dir = getYunzaiDir();
+
+      if (force) {
+        logger.info('[Yunzai] 强制重置本地更改...');
+        await this.git(['fetch', '--all'], dir);
+        this.throwIfCancelled();
+        await this.git(['reset', '--hard', 'origin/HEAD'], dir);
+        this.throwIfCancelled();
+      }
       logger.info('[Yunzai] 正在拉取更新...');
-      const out = await this.git(['pull'], getYunzaiDir());
+      const out = await this.git(['pull'], dir);
 
       this.throwIfCancelled();
       this.ensureWorkspaces();
@@ -638,6 +656,41 @@ class YunzaiManager {
         } catch {}
       }
       throw err;
+    } finally {
+      this.endTask();
+    }
+  }
+
+  /** 更新指定插件（git pull） */
+  async updatePlugin(plugin: PluginInfo, force = false): Promise<string> {
+    if (!this.isInstalled) {
+      throw new Error('Yunzai 未安装');
+    }
+    const pluginDir = `${getYunzaiDir()}/plugins/${plugin.dirName}`;
+
+    if (!existsSync(pluginDir)) {
+      throw new Error(`${plugin.label} 未安装`);
+    }
+    this.beginTask('更新插件');
+    try {
+      if (force) {
+        logger.info(`[Yunzai] 强制重置 ${plugin.label} 本地更改...`);
+        await this.git(['fetch', '--all'], pluginDir);
+        this.throwIfCancelled();
+        await this.git(['reset', '--hard', 'origin/HEAD'], pluginDir);
+        this.throwIfCancelled();
+      }
+      logger.info(`[Yunzai] 正在更新 ${plugin.label}...`);
+      const out = await this.git(['pull'], pluginDir);
+
+      this.throwIfCancelled();
+      this.ensureWorkspaces();
+      logger.info('[Yunzai] 正在安装插件依赖...');
+      await this.npmInstall(getYunzaiDir());
+      this.throwIfCancelled();
+      logger.info(`[Yunzai] ${plugin.label} 更新完成`);
+
+      return out;
     } finally {
       this.endTask();
     }

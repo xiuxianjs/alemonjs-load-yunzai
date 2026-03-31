@@ -26,6 +26,9 @@ const CONTROLS: { cmd: string; desc: string; color: ColorKey }[] = [
   { cmd: '#yz停止', desc: '停止 Worker', color: 'orange' },
   { cmd: '#yz重启', desc: '停止后重新启动', color: 'blue' },
   { cmd: '#yz更新', desc: '拉取代码+装依赖+重启', color: 'blue' },
+  { cmd: '#yz强制更新', desc: '重置本地+更新+装依赖', color: 'red' },
+  { cmd: '#yz更新插件', desc: '更新指定插件', color: 'blue' },
+  { cmd: '#yz强制更新插件', desc: '重置+更新指定插件', color: 'red' },
   { cmd: '#yz安装依赖', desc: '重新安装所有依赖', color: 'blue' }
 ];
 

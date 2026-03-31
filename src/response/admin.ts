@@ -108,6 +108,49 @@ export default async (e: EventsEnum, next: Next) => {
       reply(isQQBot ? '正在安装 Yunzai...' : `正在安装 Yunzai...\n仓库: ${repo}`);
       await manager.install(repo);
       reply('Yunzai 安装完成（含依赖）。发送 #yz启动 启动 Yunzai');
+    } else if (cmd.startsWith('更新插件')) {
+      const arg = cmd.replace('更新插件', '').trim();
+
+      if (!arg) {
+        reply('用法: #yz更新插件<别名> 或 #yz强制更新插件<别名>\n例: #yz更新插件miao');
+
+        return;
+      }
+      const plugin = getPluginInfo(arg);
+
+      if (!plugin) {
+        reply(`未知插件「${arg}」`);
+
+        return;
+      }
+      reply(`正在更新插件 ${plugin.label}...`);
+      const out = await manager.updatePlugin(plugin);
+
+      reply(`${plugin.label} 更新完成。如需生效请发送 #yz重启\n${out.slice(0, 200)}`);
+    } else if (cmd.startsWith('强制更新插件')) {
+      const arg = cmd.replace('强制更新插件', '').trim();
+
+      if (!arg) {
+        reply('用法: #yz强制更新插件<别名>\n例: #yz强制更新插件miao');
+
+        return;
+      }
+      const plugin = getPluginInfo(arg);
+
+      if (!plugin) {
+        reply(`未知插件「${arg}」`);
+
+        return;
+      }
+      reply(`正在强制更新插件 ${plugin.label}...`);
+      const out = await manager.updatePlugin(plugin, true);
+
+      reply(`${plugin.label} 强制更新完成。如需生效请发送 #yz重启\n${out.slice(0, 200)}`);
+    } else if (cmd.startsWith('强制更新')) {
+      reply('正在强制更新 Yunzai...');
+      const out = await manager.updateAll(true);
+
+      reply(`强制更新完成\n${out.slice(0, 200)}`);
     } else if (cmd.startsWith('更新')) {
       reply('正在更新 Yunzai...');
       const out = await manager.updateAll();
