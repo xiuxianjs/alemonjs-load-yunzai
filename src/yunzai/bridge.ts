@@ -7,7 +7,6 @@
  * 4. 异步接收 Worker 回复（支持多次 reply），通过 AlemonJS Format 发送
  * 5. 接收 Worker API 请求，调用 AlemonJS 平台 API 实现双向通信
  */
-import { isMaster } from '@src/utils';
 import { EventsEnum, Format, logger, Next, sendToChannel, sendToUser, useGuild, useMe, useMember, useMessage, useRequest, useUser } from 'alemonjs';
 import { manager } from './manager';
 import type { IPCApiRequest, IPCDone, IPCMedia, IPCReply, ReplyContent } from './protocol';
@@ -823,8 +822,6 @@ function extractRawEvent(event: any, rawE: any): any {
 }
 
 export default (e: EventsEnum, next: Next) => {
-  e.IsMaster = e.IsMaster ?? isMaster(e?.UserId, e?.Platform);
-
   if (!manager.isReady) {
     next();
 

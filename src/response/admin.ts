@@ -2,7 +2,6 @@
  * Yunzai 管理指令（仅限主人使用）
  */
 import { getYunzaiDir } from '@src/path';
-import { isMaster } from '@src/utils';
 import { createEvent, EventsEnum, Format, Next, useMessage } from 'alemonjs';
 import { existsSync, readdirSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
@@ -18,7 +17,6 @@ function stripUrls(text: string): string {
 }
 
 export default async (e: EventsEnum, next: Next) => {
-  e.IsMaster = e?.IsMaster ?? isMaster(e?.UserId, e?.Platform);
   const event = createEvent({
     event: e,
     selects: ['message.create', 'private.message.create']
