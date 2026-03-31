@@ -26,8 +26,8 @@ declare class YunzaiManager {
     private markStartFailed;
     cancelTask(): boolean;
     install(repoUrl?: string): Promise<void>;
-    update(): Promise<string>;
-    updateAll(): Promise<string>;
+    update(force?: boolean): Promise<string>;
+    updateAll(force?: boolean): Promise<string>;
     start(): Promise<void>;
     stop(): Promise<void>;
     restart(): Promise<void>;
@@ -49,6 +49,7 @@ declare class YunzaiManager {
     private git;
     private npmInstall;
     installPlugin(plugin: PluginInfo): Promise<void>;
+    updatePlugin(plugin: PluginInfo, force?: boolean): Promise<string>;
     uninstallPlugin(plugin: PluginInfo): void;
     installDeps(): Promise<string>;
     private ensureWorkspaces;
