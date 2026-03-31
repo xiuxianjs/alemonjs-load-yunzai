@@ -62,22 +62,131 @@ export interface PluginInfo {
   label: string;
 }
 
-/** 别名 → 插件信息映射 */
-const PLUGIN_ALIAS_MAP: Record<string, PluginInfo> = {
-  miao: { dirName: 'miao-plugin', repoUrl: 'https://github.com/yoimiya-kokomi/miao-plugin.git', label: 'miao-plugin' },
-  miaomiao: { dirName: 'miao-plugin', repoUrl: 'https://github.com/yoimiya-kokomi/miao-plugin.git', label: 'miao-plugin' },
-  原神: { dirName: 'miao-plugin', repoUrl: 'https://github.com/yoimiya-kokomi/miao-plugin.git', label: 'miao-plugin' },
-  starrail: { dirName: 'StarRail-plugin', repoUrl: 'https://gitee.com/hewang1an/StarRail-plugin.git', label: 'StarRail-plugin' },
-  星铁: { dirName: 'StarRail-plugin', repoUrl: 'https://gitee.com/hewang1an/StarRail-plugin.git', label: 'StarRail-plugin' },
-  zzz: { dirName: 'ZZZ-Plugin', repoUrl: 'https://gitee.com/bietiaop/ZZZ-Plugin.git', label: 'ZZZ-Plugin' },
-  图鉴: { dirName: 'xiaoyao-cvs-plugin', repoUrl: 'https://cnb.cool/tar/xiaoyao-cvs-plugin.git', label: 'xiaoyao-cvs-plugin' },
-  锅巴: { dirName: 'guoba-plugin', repoUrl: 'https://gitee.com/guoba-yunzai/guoba-plugin.git', label: 'guoba-plugin' },
-  guoba: { dirName: 'guoba-plugin', repoUrl: 'https://gitee.com/guoba-yunzai/guoba-plugin.git', label: 'guoba-plugin' }
-};
+/** 插件定义：信息 + 所有别名 */
+export interface PluginDef extends PluginInfo {
+  aliases: string[];
+}
+
+/** 内置插件列表（每个插件只定义一次） */
+const BUILTIN_PLUGINS: PluginDef[] = [
+  { aliases: ['miao', 'miaomiao', '原神'], dirName: 'miao-plugin', repoUrl: 'https://github.com/yoimiya-kokomi/miao-plugin.git', label: 'miao-plugin' },
+  { aliases: ['starrail', '星铁'], dirName: 'StarRail-plugin', repoUrl: 'https://gitee.com/hewang1an/StarRail-plugin.git', label: 'StarRail-plugin' },
+  { aliases: ['zzz'], dirName: 'ZZZ-Plugin', repoUrl: 'https://gitee.com/bietiaop/ZZZ-Plugin.git', label: 'ZZZ-Plugin' },
+  { aliases: ['图鉴'], dirName: 'xiaoyao-cvs-plugin', repoUrl: 'https://cnb.cool/tar/xiaoyao-cvs-plugin.git', label: 'xiaoyao-cvs-plugin' },
+  { aliases: ['锅巴', 'guoba'], dirName: 'guoba-plugin', repoUrl: 'https://gitee.com/guoba-yunzai/guoba-plugin.git', label: 'guoba-plugin' },
+  { aliases: ['喵喵扩展', 'liangshi'], dirName: 'liangshi-calc', repoUrl: 'https://gitee.com/liangshi233/liangshi-calc.git', label: 'liangshi-calc' },
+  {
+    aliases: ['明日方舟', '方舟', 'endfield'],
+    dirName: 'endfield-suzuki-plugin',
+    repoUrl: 'https://github.com/yoshino-xiao7/endfield-suzuki-plugin.git',
+    label: 'endfield-suzuki-plugin'
+  },
+  { aliases: ['终末地', 'zmd'], dirName: 'zmd-plugin', repoUrl: 'https://github.com/Anon-deisu/zmd-plugin.git', label: 'zmd-plugin' },
+  { aliases: ['三角洲', 'delta'], dirName: 'delta-force-plugin', repoUrl: 'https://github.com/Dnyo666/delta-force-plugin.git', label: 'delta-force-plugin' },
+  {
+    aliases: ['王者荣耀', '王者'],
+    dirName: 'GloryOfKings-Plugin',
+    repoUrl: 'https://gitee.com/Tloml-Starry/GloryOfKings-Plugin.git',
+    label: 'GloryOfKings-Plugin'
+  },
+  { aliases: ['尘白禁区', '尘白'], dirName: 'cb-plugin', repoUrl: 'https://github.com/Sakura1618/cb-plugin.git', label: 'cb-plugin' },
+  { aliases: ['鸣潮', 'waves'], dirName: 'waves-plugin', repoUrl: 'https://github.com/erzaozi/waves-plugin.git', label: 'waves-plugin' },
+  { aliases: ['重返未来', '1999'], dirName: '1999-plugin', repoUrl: 'https://gitee.com/fantasy-hx/1999-plugin.git', label: '1999-plugin' },
+  { aliases: ['库洛', 'kuro'], dirName: 'Yunzai-Kuro-Plugin', repoUrl: 'https://github.com/TomyJan/Yunzai-Kuro-Plugin.git', label: 'Yunzai-Kuro-Plugin' },
+  { aliases: ['光遇', 'sky'], dirName: 'Tlon-Sky', repoUrl: 'https://gitee.com/Tloml-Starry/Tlon-Sky.git', label: 'Tlon-Sky' }
+];
+
+/** 展开别名数组为 alias → PluginInfo 的扁平映射 */
+function buildAliasMap(plugins: PluginDef[]): Record<string, PluginInfo> {
+  const map: Record<string, PluginInfo> = {};
+
+  for (const { aliases, dirName, repoUrl, label } of plugins) {
+    const info: PluginInfo = { dirName, repoUrl, label };
+
+    for (const alias of aliases) {
+      map[alias] = info;
+    }
+  }
+
+  return map;
+}
+
+const BUILTIN_PLUGIN_MAP = buildAliasMap(BUILTIN_PLUGINS);
+
+/**
+ * 合并内置插件与用户自定义插件配置
+ * 用户可在 alemon.config.yaml 的 alemonjs-load-yunzai.plugins 中添加：
+ * ```yaml
+ * alemonjs-load-yunzai:
+ *   plugins:
+ *     别名:
+ *       dirName: 插件目录名
+ *       repoUrl: git仓库地址
+ *       label: 显示名称
+ *       aliases:          # 可选，额外别名
+ *         - 别名2
+ *         - 别名3
+ * ```
+ */
+function getPluginAliasMap(): Record<string, PluginInfo> {
+  const custom = getConfig()?.plugins ?? {};
+  const merged = { ...BUILTIN_PLUGIN_MAP };
+
+  for (const [alias, raw] of Object.entries(custom)) {
+    if (raw && typeof raw === 'object' && (raw as any).dirName && (raw as any).repoUrl) {
+      const info: PluginInfo = {
+        dirName: (raw as any).dirName,
+        repoUrl: (raw as any).repoUrl,
+        label: (raw as any).label ?? (raw as any).dirName
+      };
+
+      merged[alias.toLowerCase()] = info;
+
+      const extraAliases: string[] = Array.isArray((raw as any).aliases) ? (raw as any).aliases : [];
+
+      for (const a of extraAliases) {
+        if (typeof a === 'string' && a) {
+          merged[a.toLowerCase()] = info;
+        }
+      }
+    }
+  }
+
+  return merged;
+}
+
+/**
+ * 返回所有可用插件（内置 + 用户自定义），按 dirName 去重
+ */
+export function getAllPlugins(): PluginDef[] {
+  const result: PluginDef[] = [...BUILTIN_PLUGINS];
+  const seen = new Set(result.map(p => p.dirName));
+  const custom = getConfig()?.plugins ?? {};
+
+  for (const [alias, raw] of Object.entries(custom)) {
+    if (raw && typeof raw === 'object' && (raw as any).dirName && (raw as any).repoUrl) {
+      const dirName = (raw as any).dirName as string;
+
+      if (seen.has(dirName)) { continue; }
+      seen.add(dirName);
+
+      const extraAliases: string[] = Array.isArray((raw as any).aliases) ? (raw as any).aliases : [];
+
+      result.push({
+        dirName,
+        repoUrl: (raw as any).repoUrl,
+        label: (raw as any).label ?? dirName,
+        aliases: [alias, ...extraAliases]
+      });
+    }
+  }
+
+  return result;
+}
 
 /** 根据用户输入的别名查找插件信息（大小写不敏感） */
 export function getPluginInfo(alias: string): PluginInfo | undefined {
-  return PLUGIN_ALIAS_MAP[alias.toLowerCase()];
+  return getPluginAliasMap()[alias.toLowerCase()];
 }
 
 /** Miao-Yunzai 安装目录（放在应用根目录下，避免污染 packages） */

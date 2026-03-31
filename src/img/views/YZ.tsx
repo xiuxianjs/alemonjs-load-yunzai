@@ -7,17 +7,9 @@ import HTML from './HTML.js';
 
 const INSTALL_FLOW = [
   { step: '①', label: '安装框架', cmd: '#yz安装', desc: '克隆 Yunzai 仓库' },
-  { step: '②', label: '安装插件', cmd: '#yz安装miao', desc: '按需安装游戏插件' },
+  { step: '②', label: '安装插件', cmd: '#yz安装插件miao', desc: '按需安装游戏插件' },
   { step: '③', label: '安装依赖', cmd: '#yz安装依赖', desc: '统一安装所有依赖' },
   { step: '④', label: '启动', cmd: '#yz启动', desc: '启动 Worker 进程' }
-];
-
-const PLUGINS = [
-  { alias: 'miao / 原神', cmd: '#yz安装miao', name: 'miao-plugin', desc: '原神角色面板/深渊/武器' },
-  { alias: '星铁 / starrail', cmd: '#yz安装星铁', name: 'StarRail-plugin', desc: '星穹铁道角色/深渊/体力' },
-  { alias: 'ZZZ', cmd: '#yz安装ZZZ', name: 'ZZZ-Plugin', desc: '绝区零代理人/邦布/体力' },
-  { alias: '图鉴', cmd: '#yz安装图鉴', name: 'xiaoyao-cvs-plugin', desc: '角色/武器攻略图鉴' },
-  { alias: '锅巴 / guoba', cmd: '#yz安装锅巴', name: 'guoba-plugin', desc: 'Yunzai Web 面板管理插件' }
 ];
 
 type ColorKey = 'green' | 'blue' | 'orange' | 'red';
@@ -33,12 +25,15 @@ const CONTROLS: { cmd: string; desc: string; color: ColorKey }[] = [
   { cmd: '#yz启动', desc: '启动 Worker', color: 'green' },
   { cmd: '#yz停止', desc: '停止 Worker', color: 'orange' },
   { cmd: '#yz重启', desc: '停止后重新启动', color: 'blue' },
-  { cmd: '#yz更新', desc: '拉取代码+装依赖+重启', color: 'blue' }
+  { cmd: '#yz更新', desc: '拉取代码+装依赖+重启', color: 'blue' },
+  { cmd: '#yz安装依赖', desc: '重新安装所有依赖', color: 'blue' }
 ];
 
 const TOOLS: { cmd: string; desc: string; color: ColorKey }[] = [
   { cmd: '#yz状态', desc: '查看当前运行状态', color: 'orange' },
   { cmd: '#yz取消', desc: '取消正在执行的任务', color: 'orange' },
+  { cmd: '#yz插件帮助', desc: '查看插件列表', color: 'green' },
+  { cmd: '#yz卸载插件', desc: '卸载指定插件', color: 'red' },
   { cmd: '#yz卸载', desc: '停止并删除 Yunzai', color: 'red' },
   { cmd: '#yz帮助', desc: '查看本帮助图', color: 'orange' }
 ];
@@ -121,23 +116,6 @@ export default function MihoyoHelp({ data: _data }: MihoyoHelpProps) {
             ))}
           </div>
           <div className='text-[11px] text-yz-gray mt-2 text-center'>安装完成后会自动启动 · 步骤②可重复执行安装多个插件</div>
-        </div>
-
-        {/* ═══ 可安装插件 ═══ */}
-        <div className='bg-yz-card rounded-xl p-4 mb-3.5 shadow-card'>
-          <Title color='bg-yz-green'>可安装插件</Title>
-          <div className='flex flex-col gap-2'>
-            {PLUGINS.map((p, i) => (
-              <div key={i} className='flex items-center bg-yz-green-bg rounded-lg py-2.5 px-3.5 gap-3'>
-                <div className='text-[13px] font-bold text-yz-green bg-white rounded px-2 py-0.5 whitespace-nowrap min-w-[130px] text-center'>{p.cmd}</div>
-                <div className='flex-1'>
-                  <span className='text-[13px] font-bold text-yz-text'>{p.name}</span>
-                  <span className='text-xs text-yz-gray ml-2'>{p.desc}</span>
-                </div>
-                <div className='text-[11px] text-yz-sub whitespace-nowrap'>别名: {p.alias}</div>
-              </div>
-            ))}
-          </div>
         </div>
 
         {/* ═══ 进程控制 + 工具 ═══ */}

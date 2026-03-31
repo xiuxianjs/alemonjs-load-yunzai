@@ -6,24 +6,6 @@
 
 - 是OneBot优先的，确保最大程度上适用于所有Yunzai插件，其他平台适配情况则完全依赖于框架的通用模型
 
-## 管理指令
-
-所有管理指令⚠️`仅限主人使用`，前缀支持 `#yz` 或 `#云崽`,使用`#yz帮助`了解基本使用
-
-- alemon.config.yaml 新增 uk
-
-```yaml
-# https://alemonjs.com/docs/config
-# 可发指令后观察控制台 [UserKey:abcdefg] 后得到
-# 不配置将无法正常获得主人权限
-master_key:
-  abcdefg: true
-```
-
-- 安装一般操作步骤
-
-`#yz安装` -> `#yz安装miao` -> `#yz安装依赖` -> `#yz启动/#yz重启`
-
 ## 安装方式1: Git
 
 ### alemongo/alemondesk
@@ -40,23 +22,6 @@ https://github.com/xiuxianjs/alemonjs-load-yunzai.git
 release
 ```
 
-### 本地
-
-```sh
-git clone -b release --depth=1 https://github.com/xiuxianjs/alemonjs-load-yunzai.git ./packages/alemonjs-load-yunzai
-```
-
-```sh
-yarn install #开始模块化
-```
-
-- alemon.config.yaml
-
-```yaml
-apps:
-  alemonjs-load-yunzai: true # 启动扩展
-```
-
 ## 安装方式2: npm
 
 ```sh
@@ -68,6 +33,69 @@ yarn add alemonjs-load-yunzai -W
 ```yaml
 apps:
   alemonjs-load-yunzai: true # 启动扩展
+```
+
+## 管理指令
+
+所有管理指令⚠️`仅限主人使用`，前缀支持 `#yz` 或 `#云崽`,使用`#yz帮助`和`#yz插件帮助`了解基本使用
+
+- alemon.config.yaml 新增 uk
+
+```yaml
+# https://alemonjs.com/docs/config
+# 可发指令后观察控制台 [UserKey:abcdefg] 后得到
+# 不配置将无法正常获得主人权限
+master_key:
+  abcdefg: true
+```
+
+- 安装一般操作步骤
+
+`#yz安装` -> `#yz安装插件miao` -> `#yz安装依赖` -> `#yz启动/#yz重启`
+
+- `#yz安装<仓库地址?>` — 安装 Yunzai 框架（可跟自定义仓库地址）
+- `#yz安装插件<别名>` — 按别名安装内置/配置的插件
+- `#yz安装插件<仓库地址>` — 按 git 地址安装任意插件
+- `#yz安装依赖` — 重新安装所有依赖
+- `#yz卸载插件<别名>` — 卸载指定插件
+- `#yz卸载` — 停止并删除整个 Yunzai
+
+## 配置项
+
+在 `alemon.config.yaml` 中通过 `alemonjs-load-yunzai` 键进行配置，所有项均为可选：
+
+```yaml
+# https://alemonjs.com/docs/config
+alemonjs-load-yunzai:
+  # Bot 目录名
+  bot_name: Miao-Yunzai
+  # GitHub 代理前缀
+  gh_proxy: https://ghfast.top/
+  # Yunzai 仓库地址
+  yunzai_repo: https://github.com/yoimiya-kokomi/Miao-Yunzai.git
+  # miao-plugin 仓库地址
+  miao_plugin_repo: https://github.com/yoimiya-kokomi/miao-plugin.git
+  # 自定义插件（会与内置插件列表合并，别名不区分大小写）
+  plugins:
+    my:
+      dirName: my-plugin
+      repoUrl: https://github.com/xxx/my-plugin.git
+      label: my-plugin
+      # 别名
+      aliases:
+        - 我的插件
+        - myplugin
+```
+
+> Redis 配置会自动从顶层 `redis` 配置同步到 Miao-Yunzai，无需重复配置。
+
+```yaml
+# https://alemonjs.com/docs/config
+redis:
+  host: 127.0.0.1
+  port: 6379
+  user: root
+  db: 0
 ```
 
 ## 免责声明

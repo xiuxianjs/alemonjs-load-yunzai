@@ -65,25 +65,46 @@ export default async (e: EventsEnum, next: Next) => {
       return;
     }
 
-    if (cmd.startsWith('安装依赖')) {
-      reply('正在安装 Yunzai 依赖（含插件子包）...');
-      await manager.installDeps();
-      reply('依赖安装完成。如需生效请发送 #yz重启');
-    } else if (cmd.startsWith('安装')) {
-      const arg = cmd.replace('安装', '').trim();
-      const plugin = arg ? getPluginInfo(arg) : undefined;
+    if (cmd.startsWith('安装插件')) {
+      // #yz安装插件xxx — 别名或仓库地址安装插件
+      const arg = cmd.replace('安装插件', '').trim();
+
+      if (!arg) {
+        reply('用法: #yz安装插件<别名或仓库地址>\n例: #yz安装插件miao\n例: #yz安装插件https://github.com/xxx/my-plugin.git');
+
+        return;
+      }
+      const plugin = getPluginInfo(arg);
 
       if (plugin) {
         reply(`正在安装插件 ${plugin.label}...`);
         await manager.installPlugin(plugin);
         reply(`${plugin.label} 安装完成（含依赖）。如需生效请发送 #yz重启`);
-      } else {
-        const repo = arg || getDefaultRepo();
+      } else if (/^(https?:\/\/|git@)/.test(arg)) {
+        const dirName =
+          arg
+            .replace(/\.git$/, '')
+            .split('/')
+            .pop() ?? 'unknown-plugin';
 
-        reply(isQQBot ? '正在安装 Yunzai...' : `正在安装 Yunzai...\n仓库: ${repo}`);
-        await manager.install(repo);
-        reply('Yunzai 安装完成（含依赖）。发送 #yz启动 启动 Yunzai');
+        reply(isQQBot ? `正在安装插件 ${dirName}...` : `正在安装插件 ${dirName}...\n仓库: ${arg}`);
+        await manager.installPlugin({ dirName, repoUrl: arg, label: dirName });
+        reply(`${dirName} 安装完成（含依赖）。如需生效请发送 #yz重启`);
+      } else {
+        reply(`未知插件「${arg}」，请使用别名或完整仓库地址`);
       }
+    } else if (cmd.startsWith('安装依赖')) {
+      reply('正在安装 Yunzai 依赖（含插件子包）...');
+      await manager.installDeps();
+      reply('依赖安装完成。如需生效请发送 #yz重启');
+    } else if (cmd.startsWith('安装')) {
+      // #yz安装 [仓库地址] — 安装 Yunzai 框架本体
+      const arg = cmd.replace('安装', '').trim();
+      const repo = arg || getDefaultRepo();
+
+      reply(isQQBot ? '正在安装 Yunzai...' : `正在安装 Yunzai...\n仓库: ${repo}`);
+      await manager.install(repo);
+      reply('Yunzai 安装完成（含依赖）。发送 #yz启动 启动 Yunzai');
     } else if (cmd.startsWith('更新')) {
       reply('正在更新 Yunzai...');
       const out = await manager.updateAll();
@@ -102,6 +123,24 @@ export default async (e: EventsEnum, next: Next) => {
       reply('Yunzai 已重启');
     } else if (cmd.startsWith('状态')) {
       reply(`Yunzai 状态: ${manager.getStatus()}`);
+    } else if (cmd.startsWith('卸载插件')) {
+      const arg = cmd.replace('卸载插件', '').trim();
+
+      if (!arg) {
+        reply('用法: #yz卸载插件<别名>\n例: #yz卸载插件miao');
+
+        return;
+      }
+      const plugin = getPluginInfo(arg);
+
+      if (!plugin) {
+        reply(`未知插件「${arg}」`);
+
+        return;
+      }
+      reply(`正在卸载插件 ${plugin.label}...`);
+      manager.uninstallPlugin(plugin);
+      reply(`${plugin.label} 已卸载。如需生效请发送 #yz重启`);
     } else if (cmd.startsWith('卸载')) {
       reply('正在卸载 Yunzai...');
       await manager.uninstall();

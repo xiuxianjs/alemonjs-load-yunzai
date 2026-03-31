@@ -643,6 +643,26 @@ class YunzaiManager {
     }
   }
 
+  /** 卸载指定插件 */
+  uninstallPlugin(plugin: PluginInfo): void {
+    if (!this.isInstalled) {
+      throw new Error('Yunzai 未安装');
+    }
+    const pluginDir = `${getYunzaiDir()}/plugins/${plugin.dirName}`;
+
+    if (!existsSync(pluginDir)) {
+      throw new Error(`${plugin.label} 未安装`);
+    }
+    this.beginTask('卸载插件');
+    try {
+      logger.info(`[Yunzai] 正在卸载 ${plugin.label}...`);
+      rmSync(pluginDir, { recursive: true, force: true });
+      logger.info(`[Yunzai] ${plugin.label} 已卸载`);
+    } finally {
+      this.endTask();
+    }
+  }
+
   /** 重新安装依赖（用于依赖缺失后修复） */
   async installDeps(): Promise<string> {
     if (!this.isInstalled) {

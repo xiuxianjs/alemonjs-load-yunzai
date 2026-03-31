@@ -8,6 +8,12 @@ const responseRouter = defineRouter([
     selects: ['message.create', 'private.message.create'],
     handler: lazy(() => import('./response/help'))
   },
+  // 插件帮助
+  {
+    regular: /^(!|！|\/|#|＃)(yz|云崽)(插件帮助|插件列表)$/,
+    selects: ['message.create', 'private.message.create'],
+    handler: lazy(() => import('./response/pluginHelp'))
+  },
   // 管理指令
   {
     regular: /^(!|！|\/|#|＃)(yz|云崽)/,
