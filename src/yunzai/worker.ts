@@ -1571,6 +1571,12 @@ function buildEvent(data: IPCEventMessage['data'], msgId: string) {
 
 let PluginsLoader: any = null;
 
+/**
+ * 需要拦截的 Yunzai 内部危险指令（重启/关机/更新会破坏 Worker 生命周期管理）
+ * 这些指令应通过 #yz前缀 由 AlemonJS 管理层处理
+ */
+const BLOCKED_COMMANDS = /^#(重启|停机|关机|(强制)?更新|(静默)?全部(强制)?更新)$/;
+
 async function main(): Promise<void> {
   const cwd = process.cwd();
 
@@ -1780,6 +1786,17 @@ async function main(): Promise<void> {
       };
       void (async () => {
         try {
+          // 拦截 Yunzai 内部的重启/关机/更新指令
+          const rawMsg = String(e.msg ?? '').trim();
+
+          if (BLOCKED_COMMANDS.test(rawMsg)) {
+            const hint = rawMsg.includes('更新') ? '#yz更新' : rawMsg.includes('重启') ? '#yz重启' : '#yz停止';
+
+            e.reply(`该指令已被接管，请使用 ${hint}`);
+            ipcSend({ type: 'done', id: msg.id, replied: true });
+
+            return;
+          }
           await PluginsLoader.deal(e);
         } catch (err: any) {
           log('error', `deal 异常: ${err.message}`);
