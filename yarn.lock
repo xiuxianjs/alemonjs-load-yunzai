@@ -2,10 +2,10 @@
 # yarn lockfile v1
 
 
-"@alemonjs/bubble@^2.1.7":
-  version "2.1.7"
-  resolved "https://registry.npmmirror.com/@alemonjs/bubble/-/bubble-2.1.7.tgz#584a5b77e08e2a836db6870572e0829bd073c61a"
-  integrity sha512-hVwVCPS2IbrnxpKZMS9t2XaRE0p9S9+tPKkzeuEW9RebL9eXZDOQlN2wufxNEXdxBLGth5PCpzMzhfs1GCgU3w==
+"@alemonjs/bubble@^2.1.8":
+  version "2.1.8"
+  resolved "https://registry.npmmirror.com/@alemonjs/bubble/-/bubble-2.1.8.tgz#bfec6d7f938cf5cff324dac9418ed122a5198c62"
+  integrity sha512-8+vd6XwFQSuOPFDeEMTTScalrQuqOZldcOc8HKCyZ3oVJFNOYKg8zbdqEGTTJ5ZLBZslexYP5NbDoUmt66TpFg==
   dependencies:
     http-proxy-agent "^7.0.2"
     https-proxy-agent "^7"
@@ -20,26 +20,26 @@
     mysql2 "^3.6.2"
     sequelize "^6.33.0"
 
-"@alemonjs/discord@^2.1.10":
-  version "2.1.10"
-  resolved "https://registry.npmmirror.com/@alemonjs/discord/-/discord-2.1.10.tgz#d70086d281fb1ca4274e54719b43a0485952d31b"
-  integrity sha512-TtgLOjEKDiqWXUzXhsbSLuAO+VBOP60DGlHW2DSWzrTs3wQe6lj8ztugqVmB44R4jAqMGlTIFOECL0qcsWCBoA==
+"@alemonjs/discord@^2.1.11":
+  version "2.1.11"
+  resolved "https://registry.npmmirror.com/@alemonjs/discord/-/discord-2.1.11.tgz#dd1f06693883f954e45762677ce10b2f45226b18"
+  integrity sha512-/eseLERuL7w76ros74kGTEdihQ0pTyXo+DVWgq6SAS4rAk+DpBD7kM8cg7c3pRx6Rfs2rLO5AB6nTnhNg+rZgQ==
   dependencies:
     http-proxy-agent "^7.0.2"
     https-proxy-agent "^7"
 
-"@alemonjs/onebot@^2.1.11":
-  version "2.1.11"
-  resolved "https://registry.npmmirror.com/@alemonjs/onebot/-/onebot-2.1.11.tgz#4d286172e00d33d2ce9e21b8549c508f9c43242a"
-  integrity sha512-WDIovQKZCnPLwMLeehBZE71qnrRrqN5fSwCblFZ8h6Niz1VExNumPSwo8Xwc9pDOKbXqu1Q01VIGC7O19+tTBA==
+"@alemonjs/onebot@^2.1.12":
+  version "2.1.12"
+  resolved "https://registry.npmmirror.com/@alemonjs/onebot/-/onebot-2.1.12.tgz#c64d394e627148658aa557d6464a794ee3e4493a"
+  integrity sha512-UjxM5kW8n7roSoKuqXOFDckf3ySYJP0ZShQr3z5i7ruwstJDeeUx1TjUhdTsTxIml7jo8Zf8Y51vmHLR78zeCw==
   dependencies:
     dayjs "^1.11.13"
     ws "^8.18.1"
 
-"@alemonjs/qq-bot@^2.1.11":
-  version "2.1.11"
-  resolved "https://registry.npmmirror.com/@alemonjs/qq-bot/-/qq-bot-2.1.11.tgz#5e900c0e9bc1a6182261b865d4798fb96c1ffedd"
-  integrity sha512-xwOvN0LwaK0nlVLeVAKLMcwLcZinhEUX9JOELQC2GDPgDiX/5PuReoty0hdxGypbtE33H43lRajhuwYe7Y1N2A==
+"@alemonjs/qq-bot@^2.1.12":
+  version "2.1.12"
+  resolved "https://registry.npmmirror.com/@alemonjs/qq-bot/-/qq-bot-2.1.12.tgz#3efa13004df1d5a7fabe5e1e1424a9bd37dc0bd0"
+  integrity sha512-0N41kvrAf02uOdKPNsRcvy0UJb4cCaCSgFqMI3g+LAF7oHRw/jSW6G/2c6FF2wSVBYKqp1IPE/rzguUbjJPBpA==
   dependencies:
     "@noble/curves" "^1.7.0"
     axios "^1.4.0"

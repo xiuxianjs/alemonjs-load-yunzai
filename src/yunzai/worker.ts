@@ -1158,6 +1158,15 @@ function buildRawNonMessageEvent(raw: any, data: IPCEventMessage['data'], selfId
     };
   }
 
+  // sender — MysInfo.getUid 等插件依赖 e.sender.card 存在
+  e.sender = {
+    user_id: userId,
+    nickname: raw.sender?.nickname ?? data.userName ?? 'User',
+    card: raw.sender?.card ?? raw.sender?.nickname ?? data.userName ?? '',
+    role: raw.sender?.role ?? 'member'
+  };
+  e.nickname = raw.sender?.nickname ?? data.userName ?? 'User';
+
   if (raw.post_type === 'request') {
     e.approve = (approve = true) => callApi(raw.request_type === 'friend' ? 'setFriendAddRequest' : 'setGroupAddRequest', { flag: raw.flag, approve, type: raw.sub_type }).catch(() => false);
     e.reject = (reason = '') => callApi(raw.request_type === 'friend' ? 'setFriendAddRequest' : 'setGroupAddRequest', {

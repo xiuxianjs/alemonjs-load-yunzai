@@ -28,11 +28,11 @@
     "md5": "^2.3.0"
   },
   "devDependencies": {
-    "@alemonjs/bubble": "^2.1.7",
+    "@alemonjs/bubble": "^2.1.8",
     "@alemonjs/db": "^0.0.16",
-    "@alemonjs/discord": "^2.1.10",
-    "@alemonjs/onebot": "^2.1.11",
-    "@alemonjs/qq-bot": "^2.1.11",
+    "@alemonjs/discord": "^2.1.11",
+    "@alemonjs/onebot": "^2.1.12",
+    "@alemonjs/qq-bot": "^2.1.12",
     "@eslint/js": "^9.18.0",
     "alemonjs": "^2.1.48",
     "eslint": "^9.18.0",
