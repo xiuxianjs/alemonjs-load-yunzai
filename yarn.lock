@@ -2,10 +2,10 @@
 # yarn lockfile v1
 
 
-"@alemonjs/bubble@^2.1.6":
-  version "2.1.6"
-  resolved "https://registry.npmmirror.com/@alemonjs/bubble/-/bubble-2.1.6.tgz#a1ca2d1e695ffadaeb2c61dfca3fff4b4ce74762"
-  integrity sha512-7z+XykARWGmJpJwBO2x8ITCZUmqNtxqgkBshXuhV1DHrDJUYZX1whf+ff3jwdkqANSpjLhI4Koob+qaP9IKNGA==
+"@alemonjs/bubble@^2.1.7":
+  version "2.1.7"
+  resolved "https://registry.npmmirror.com/@alemonjs/bubble/-/bubble-2.1.7.tgz#584a5b77e08e2a836db6870572e0829bd073c61a"
+  integrity sha512-hVwVCPS2IbrnxpKZMS9t2XaRE0p9S9+tPKkzeuEW9RebL9eXZDOQlN2wufxNEXdxBLGth5PCpzMzhfs1GCgU3w==
   dependencies:
     http-proxy-agent "^7.0.2"
     https-proxy-agent "^7"
@@ -20,26 +20,26 @@
     mysql2 "^3.6.2"
     sequelize "^6.33.0"
 
-"@alemonjs/discord@^2.1.9":
-  version "2.1.9"
-  resolved "https://registry.npmmirror.com/@alemonjs/discord/-/discord-2.1.9.tgz#13338bb091d33a6e82604610ee0ca31052941ac5"
-  integrity sha512-vgjaGYZN8eJD3OlwWII+vSmgLvWXIBOt3eGackzdSstFPwtJWD8aF/ZV6L7xF4KG91J2GJ2dt99okVpYDi9l1g==
+"@alemonjs/discord@^2.1.10":
+  version "2.1.10"
+  resolved "https://registry.npmmirror.com/@alemonjs/discord/-/discord-2.1.10.tgz#d70086d281fb1ca4274e54719b43a0485952d31b"
+  integrity sha512-TtgLOjEKDiqWXUzXhsbSLuAO+VBOP60DGlHW2DSWzrTs3wQe6lj8ztugqVmB44R4jAqMGlTIFOECL0qcsWCBoA==
   dependencies:
     http-proxy-agent "^7.0.2"
     https-proxy-agent "^7"
 
-"@alemonjs/onebot@^2.1.9":
-  version "2.1.9"
-  resolved "https://registry.npmmirror.com/@alemonjs/onebot/-/onebot-2.1.9.tgz#75272f34abf96fbee1d8a95cd744c7ce6f39495b"
-  integrity sha512-VsOjA0TehNxtb5imyM1z3kkCYyLsDdDDYT5u6wFWavTLJiQmYjnHQvdMlJ4iNKzM1S5XVWwjiDUNTyJcEBFWxg==
+"@alemonjs/onebot@^2.1.11":
+  version "2.1.11"
+  resolved "https://registry.npmmirror.com/@alemonjs/onebot/-/onebot-2.1.11.tgz#4d286172e00d33d2ce9e21b8549c508f9c43242a"
+  integrity sha512-WDIovQKZCnPLwMLeehBZE71qnrRrqN5fSwCblFZ8h6Niz1VExNumPSwo8Xwc9pDOKbXqu1Q01VIGC7O19+tTBA==
   dependencies:
     dayjs "^1.11.13"
     ws "^8.18.1"
 
-"@alemonjs/qq-bot@^2.1.9":
-  version "2.1.9"
-  resolved "https://registry.npmmirror.com/@alemonjs/qq-bot/-/qq-bot-2.1.9.tgz#7602bf5e6e6fe0b04c897338cad6435ca8e68b7e"
-  integrity sha512-tqaZ0BA+iOOnSU4vG2SEOMaBt3FhZOF/Fh7bupaGfNr+GCtQufHl2t00cXySqhfEApVjqL9b/8jNYMYBmDEoBw==
+"@alemonjs/qq-bot@^2.1.11":
+  version "2.1.11"
+  resolved "https://registry.npmmirror.com/@alemonjs/qq-bot/-/qq-bot-2.1.11.tgz#5e900c0e9bc1a6182261b865d4798fb96c1ffedd"
+  integrity sha512-xwOvN0LwaK0nlVLeVAKLMcwLcZinhEUX9JOELQC2GDPgDiX/5PuReoty0hdxGypbtE33H43lRajhuwYe7Y1N2A==
   dependencies:
     "@noble/curves" "^1.7.0"
     axios "^1.4.0"
@@ -924,14 +924,14 @@ ajv@^6.14.0:
     json-schema-traverse "^0.4.1"
     uri-js "^4.2.2"
 
-alemonjs@^2.1.46:
-  version "2.1.46"
-  resolved "https://registry.npmmirror.com/alemonjs/-/alemonjs-2.1.46.tgz#cd2921c5e6093d1c0e00c6c983b52c8ffa22d79e"
-  integrity sha512-TcB7npZ3DrNbZtfgkk9JZ+Vsd8oCwRrnwiM+BUqbZZ6rw7DdFSmZSdv9Om2KaDREsn1fioBxzsCVYGhZFN0d6Q==
+alemonjs@^2.1.48:
+  version "2.1.48"
+  resolved "https://registry.npmmirror.com/alemonjs/-/alemonjs-2.1.48.tgz#dbe73502cbbae7edc4c44917f76e71129c78d0d7"
+  integrity sha512-pA028H9zVGX243quLx+DCl5ZRnsYYO6lWzPpLa4D13n8kyiybbmniLJ0+rQLgWb8ZvsXGErhcK1bvm9Hc+sJMg==
   dependencies:
     "@koa/cors" "^5.0.0"
-    axios "^1.10.0"
-    chalk "^5.3.0"
+    axios "^1.14.0"
+    chalk "^5.6.2"
     commander "^13.1.0"
     file-type "21.0.0"
     flatted "^3.3.3"
@@ -1116,7 +1116,7 @@ aws-ssl-profiles@^1.1.2:
   resolved "https://registry.npmmirror.com/aws-ssl-profiles/-/aws-ssl-profiles-1.1.2.tgz#157dd77e9f19b1d123678e93f120e6f193022641"
   integrity sha512-NZKeq9AfyQvEeNlN0zSYAaWrmBffJh3IELMZfRpJVWgrpEbtEpnjvzqBPf+mxoI287JohRDoa+/nsfqqiZmF6g==
 
-axios@^1.10.0, axios@^1.4.0:
+axios@^1.14.0, axios@^1.4.0:
   version "1.14.0"
   resolved "https://registry.npmmirror.com/axios/-/axios-1.14.0.tgz#7c29f4cf2ea91ef05018d5aa5399bf23ed3120eb"
   integrity sha512-3Y8yrqLSwjuzpXuZ0oIYZ/XGgLwUIBU3uLvbcpb0pidD9ctpShJd43KSlEEkVQg6DS0G9NKyzOvBfUtDKEyHvQ==
@@ -1357,7 +1357,7 @@ chalk@^4.0.0:
     ansi-styles "^4.1.0"
     supports-color "^7.1.0"
 
-chalk@^5.3.0:
+chalk@^5.6.2:
   version "5.6.2"
   resolved "https://registry.npmmirror.com/chalk/-/chalk-5.6.2.tgz#b1238b6e23ea337af71c7f8a295db5af0c158aea"
   integrity sha512-7NzBL0rN6fMUW+f7A6Io4h40qQlG+xGmtMxfbnH/K7TAtt8JQWVQK+6g0UXKMeVJoyV5EkkNsErQ8pVD3bLHbA==
