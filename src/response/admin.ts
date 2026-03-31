@@ -1,8 +1,11 @@
 /**
  * Yunzai 管理指令（仅限主人使用）
  */
+import { getYunzaiDir } from '@src/path';
 import { isMaster } from '@src/utils';
 import { createEvent, EventsEnum, Format, Next, useMessage } from 'alemonjs';
+import { existsSync, readdirSync, rmSync } from 'node:fs';
+import { join } from 'node:path';
 import { getDefaultRepo, getPluginInfo } from '../path';
 import { manager } from '../yunzai/manager';
 
@@ -121,6 +124,26 @@ export default async (e: EventsEnum, next: Next) => {
       reply('正在重启 Yunzai...');
       await manager.restart();
       reply('Yunzai 已重启');
+    } else if (cmd.startsWith('日志清理')) {
+      const logsDir = join(getYunzaiDir(), 'logs');
+
+      if (!existsSync(logsDir)) {
+        reply('日志目录不存在');
+
+        return;
+      }
+      const files = readdirSync(logsDir).filter(f => f.endsWith('.log'));
+
+      if (files.length === 0) {
+        reply('没有可清理的日志文件');
+
+        return;
+      }
+
+      for (const f of files) {
+        rmSync(join(logsDir, f), { force: true });
+      }
+      reply(`已清理 ${files.length} 个日志文件`);
     } else if (cmd.startsWith('状态')) {
       reply(`Yunzai 状态: ${manager.getStatus()}`);
     } else if (cmd.startsWith('卸载插件')) {

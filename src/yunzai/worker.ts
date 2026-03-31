@@ -113,14 +113,30 @@ function injectGlobals(): void {
   // ── logger ──
   const identity = (s: any) => String(s);
 
+  /** 追加日志到当天 command.log 文件（sendLog 插件会读取） */
+  const appendLog = (level: string, ...args: any[]) => {
+    log(level as any, ...args.map(String));
+    try {
+      const cwd = process.cwd();
+      const today = new Date().toISOString().slice(0, 10);
+      const logFile = path.join(cwd, 'logs', `command.${today}.log`);
+      const time = new Date().toTimeString().slice(0, 8);
+      const line = `[${time}][${level.toUpperCase().padStart(4)}] ${args.map(String).join(' ')}\n`;
+
+      fs.appendFileSync(logFile, line);
+    } catch {
+      // 静默忽略
+    }
+  };
+
   g.logger = {
-    info: (...a: any[]) => log('info', ...a.map(String)),
-    warn: (...a: any[]) => log('warn', ...a.map(String)),
-    error: (...a: any[]) => log('error', ...a.map(String)),
-    debug: (...a: any[]) => log('debug', ...a.map(String)),
-    mark: (...a: any[]) => log('info', '[MARK]', ...a.map(String)),
-    trace: (...a: any[]) => log('debug', '[TRACE]', ...a.map(String)),
-    fatal: (...a: any[]) => log('error', '[FATAL]', ...a.map(String)),
+    info: (...a: any[]) => appendLog('info', ...a),
+    warn: (...a: any[]) => appendLog('warn', ...a),
+    error: (...a: any[]) => appendLog('error', ...a),
+    debug: (...a: any[]) => appendLog('debug', ...a),
+    mark: (...a: any[]) => appendLog('info', '[MARK]', ...a),
+    trace: (...a: any[]) => appendLog('debug', '[TRACE]', ...a),
+    fatal: (...a: any[]) => appendLog('error', '[FATAL]', ...a),
     // chalk 颜色方法（子进程无终端色彩，透传原文）
     chalk: { red: identity, green: identity, yellow: identity, blue: identity, magenta: identity, cyan: identity },
     red: identity,
@@ -1568,6 +1584,20 @@ async function main(): Promise<void> {
 
   if (!fs.existsSync(configDir)) {
     fs.mkdirSync(configDir, { recursive: true });
+  }
+
+  // 2.1 确保 logs 目录及当天日志文件存在（sendLog 等插件会 readFileSync 读取）
+  const logsDir = path.join(cwd, 'logs');
+
+  if (!fs.existsSync(logsDir)) {
+    fs.mkdirSync(logsDir, { recursive: true });
+  }
+
+  const today = new Date().toISOString().slice(0, 10); // yyyy-MM-dd
+  const commandLog = path.join(logsDir, `command.${today}.log`);
+
+  if (!fs.existsSync(commandLog)) {
+    fs.writeFileSync(commandLog, '');
   }
 
   // 2.5 初始化 Redis — 调用 Miao-Yunzai 自身的 redisInit()，读取 config/config/redis.yaml

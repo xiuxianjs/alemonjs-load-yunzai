@@ -1,7 +1,9 @@
 import PluginHelp from '@src/img/views/PluginHelp';
-import { getAllPlugins } from '@src/path';
+import { getAllPlugins, getYunzaiDir } from '@src/path';
 import { createEvent, EventsEnum, Format, useMessage } from 'alemonjs';
 import { renderComponentIsHtmlToBuffer } from 'jsxp';
+import { existsSync } from 'node:fs';
+import { join } from 'node:path';
 
 export default async (e: EventsEnum) => {
   const event = createEvent({
@@ -11,7 +13,12 @@ export default async (e: EventsEnum) => {
 
   const [message] = useMessage(event);
 
-  const plugins = getAllPlugins();
+  const yunzaiDir = getYunzaiDir();
+  const yunzaiInstalled = existsSync(yunzaiDir);
+  const plugins = getAllPlugins().map(p => ({
+    ...p,
+    installed: yunzaiInstalled && existsSync(join(yunzaiDir, 'plugins', p.dirName))
+  }));
 
   const img = await renderComponentIsHtmlToBuffer(PluginHelp, {
     data: { plugins }

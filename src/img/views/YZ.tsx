@@ -33,6 +33,7 @@ const TOOLS: { cmd: string; desc: string; color: ColorKey }[] = [
   { cmd: '#yz状态', desc: '查看当前运行状态', color: 'orange' },
   { cmd: '#yz取消', desc: '取消正在执行的任务', color: 'orange' },
   { cmd: '#yz插件帮助', desc: '查看插件列表', color: 'green' },
+  { cmd: '#yz日志清理', desc: '清理所有日志文件', color: 'orange' },
   { cmd: '#yz卸载插件', desc: '卸载指定插件', color: 'red' },
   { cmd: '#yz卸载', desc: '停止并删除 Yunzai', color: 'red' },
   { cmd: '#yz帮助', desc: '查看本帮助图', color: 'orange' }
