@@ -49,6 +49,7 @@ declare class YunzaiManager {
     private git;
     private npmInstall;
     installPlugin(plugin: PluginInfo): Promise<void>;
+    uninstallPlugin(plugin: PluginInfo): void;
     installDeps(): Promise<string>;
     private ensureWorkspaces;
 }
