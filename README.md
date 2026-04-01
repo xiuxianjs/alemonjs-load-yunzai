@@ -6,8 +6,6 @@
 
 - 是OneBot优先的，确保最大程度上适用于所有Yunzai插件，其他平台适配情况则完全依赖于框架的通用模型
 
-## 安装方式1: Git
-
 ### alemongo/alemondesk
 
 - 地址
@@ -20,12 +18,6 @@ https://github.com/xiuxianjs/alemonjs-load-yunzai.git
 
 ```sh
 release
-```
-
-## 安装方式2: npm
-
-```sh
-yarn add alemonjs-load-yunzai -W
 ```
 
 - alemon.config.yaml
