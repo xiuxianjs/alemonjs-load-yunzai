@@ -1301,8 +1301,15 @@ function injectMasterQQ(userId: number | string): void {
 
 function buildEvent(data: IPCEventMessage['data'], msgId: string) {
   const raw = data.rawEvent;
-  const selfId = (globalThis as any).Bot?.uin ?? 10000;
+  const botUin = (globalThis as any).Bot?.uin ?? 10000;
+  // 优先使用 raw event 的 self_id（真实 Bot QQ 号），其次用 IPC 传入的 botId
+  const selfId = raw?.self_id !== null && raw?.self_id !== undefined ? safeInt(raw.self_id, botUin) : safeInt(data.botId, botUin);
   const platformTag = data.platform ? `[${data.platform}]` : '';
+
+  // 首次获知真实 self_id 时更新 Bot.uin（后续事件及 dealMsg 的 atBot 检测依赖此值）
+  if (selfId !== 10000 && botUin === 10000) {
+    (globalThis as any).Bot.uin = selfId;
+  }
 
   // 跨平台 master 注入：确保 loader 的 cfg.masterQQ.includes() 检查通过
   if (data.isMaster && data.userId) {
@@ -1490,11 +1497,19 @@ function buildEvent(data: IPCEventMessage['data'], msgId: string) {
   const userId = safeInt(data.userId, 10001);
   const groupId = isGroup ? safeInt(data.spaceId, 10002) : 0;
 
-  // 构建消息段：文本 + 跨平台媒体附件
+  // 构建消息段：文本 + 跨平台 at 段 + 跨平台媒体附件
   const messageParts: any[] = [];
 
   if (data.messageText) {
     messageParts.push({ type: 'text', text: data.messageText });
+  }
+  // 注入跨平台 at 段（来自 bridge 提取的 atUsers）
+  if (Array.isArray(data.atUsers)) {
+    for (const u of data.atUsers) {
+      const uid = safeInt(u.userId, 0);
+
+      messageParts.push({ type: 'at', qq: uid || u.userId, text: u.userName ?? '' });
+    }
   }
   messageParts.push(...mediaToSegments(data.media));
   if (messageParts.length === 0) {
@@ -1530,8 +1545,8 @@ function buildEvent(data: IPCEventMessage['data'], msgId: string) {
     time: Math.floor(Date.now() / 1000),
     self_id: selfId,
     font: '',
-    atme: false,
-    atall: false,
+    atme: detectAtMe(messageParts, selfId),
+    atall: detectAtAll(messageParts),
 
     reply,
     getMemberMap: () => (isGroup ? makeGroupProxy(groupId).getMemberMap() : new Map()),
@@ -1758,7 +1773,9 @@ async function main(): Promise<void> {
       log('warn', '获取 Cfg 实例失败，跨平台 master 需手动配置 masterQQ');
     }
 
-    // 5b. 预填充 Bot.fl / Bot.gl（定时任务和 relpyPrivate 依赖非空列表）
+    // 5b. 获取 Bot 登录信息（更新 Bot.uin 为真实 QQ 号，atBot 检测依赖此值）
+    void (globalThis as any).Bot?.getLoginInfo?.()?.catch?.(() => {});
+    // 预填充 Bot.fl / Bot.gl（定时任务和 relpyPrivate 依赖非空列表）
     void (globalThis as any).Bot?.getGroupList?.()?.catch?.(() => {});
     void (globalThis as any).Bot?.getFriendList?.()?.catch?.(() => {});
 

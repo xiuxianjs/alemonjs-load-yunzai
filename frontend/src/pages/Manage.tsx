@@ -1,6 +1,32 @@
-import { Button, Modal, NotificationDiv, PrimaryDiv, TagDiv } from '@alemonjs/react-ui';
+import { Button, Collapse, Modal, NotificationDiv, PrimaryDiv, TagDiv } from '@alemonjs/react-ui';
 import { useEffect, useState } from 'react';
 import { SmartDropdown } from './SmartDropdown';
+
+type ColorKey = 'green' | 'blue' | 'orange' | 'red';
+
+const COLOR_MAP: Record<ColorKey, { text: string; bg: string; border: string }> = {
+  green: { text: 'text-green-600', bg: 'bg-green-500/10', border: 'border-green-500/40' },
+  blue: { text: 'text-blue-500', bg: 'bg-blue-500/10', border: 'border-blue-500/40' },
+  orange: { text: 'text-orange-500', bg: 'bg-orange-500/10', border: 'border-orange-500/40' },
+  red: { text: 'text-red-500', bg: 'bg-red-500/10', border: 'border-red-500/40' }
+};
+
+function CmdRow({ cmd, desc, color }: { cmd: string; desc: string; color: ColorKey }) {
+  const c = COLOR_MAP[color];
+
+  return (
+    <div className={`flex items-center gap-2.5 rounded-lg py-1.5 px-2.5 border-l-[3px] ${c.bg} ${c.border}`}>
+      <span className={`text-[11px] font-bold min-w-[90px] ${c.text}`}>{cmd}</span>
+      <span className='text-[11px] opacity-50'>{desc}</span>
+    </div>
+  );
+}
+
+interface HelpData {
+  installFlow: { step: string; label: string; cmd: string; desc: string }[];
+  controls: { cmd: string; desc: string; color: ColorKey }[];
+  tools: { cmd: string; desc: string; color: ColorKey }[];
+}
 
 interface ManagerState {
   status: string;
@@ -22,6 +48,7 @@ export default function Manage() {
   });
   const [loading, setLoading] = useState('');
   const [message, setMessage] = useState('');
+  const [helpData, setHelpData] = useState<HelpData | null>(null);
   const [confirmAction, setConfirmAction] = useState<{ action: string; label: string; extra?: Record<string, string> } | null>(null);
 
   const showMessage = (msg: string) => {
@@ -36,7 +63,12 @@ export default function Manage() {
 
     const handler = (data: Record<string, unknown>) => {
       if (data.type === 'yunzai.status') {
-        setState(data.data as ManagerState);
+        const d = data.data as ManagerState & { help?: HelpData };
+
+        setState(d);
+        if (d.help) {
+          setHelpData(d.help);
+        }
       } else if (data.type === 'yunzai.result') {
         setLoading('');
         showMessage((data.data as Record<string, string>)?.message ?? '操作完成');
@@ -160,6 +192,58 @@ export default function Manage() {
         >
           安装 Yunzai
         </Button>
+      )}
+
+      {/* ── 帮助 ── */}
+      {helpData && (
+        <Collapse
+          items={[
+            {
+              key: 'help',
+              label: '📖 管理帮助 · 指令参考',
+              children: (
+                <PrimaryDiv className='rounded-b-xl px-4 py-3 space-y-3'>
+                  {/* 安装流程 */}
+                  <div>
+                    <div className='text-[12px] font-semibold opacity-60 mb-2'>首次安装流程</div>
+                    <div className='grid grid-cols-4 gap-2'>
+                      {helpData.installFlow.map(s => (
+                        <div key={s.step} className='rounded-lg p-2 text-center' style={{ background: 'rgba(128,128,128,.05)' }}>
+                          <div className='text-base font-bold opacity-40 mb-1'>{s.step}</div>
+                          <div className='text-[11px] font-semibold opacity-70'>{s.label}</div>
+                          <div className='text-[10px] font-mono opacity-50 mt-0.5'>{s.cmd}</div>
+                        </div>
+                      ))}
+                    </div>
+                    <div className='text-[10px] opacity-30 mt-1.5 text-center'>步骤②可重复执行安装多个插件</div>
+                  </div>
+
+                  {/* 进程控制 + 工具指令 */}
+                  <div className='grid grid-cols-1 lg:grid-cols-2 gap-3'>
+                    <div>
+                      <div className='text-[12px] font-semibold opacity-60 mb-2'>进程控制</div>
+                      <div className='flex flex-col gap-1.5'>
+                        {helpData.controls.map(c => (
+                          <CmdRow key={c.cmd} {...c} />
+                        ))}
+                      </div>
+                    </div>
+                    <div>
+                      <div className='text-[12px] font-semibold opacity-60 mb-2'>工具指令</div>
+                      <div className='flex flex-col gap-1.5'>
+                        {helpData.tools.map(t => (
+                          <CmdRow key={t.cmd} {...t} />
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className='text-[10px] opacity-30 text-center'>💡 前缀支持 # ! / · 可用 #yz 或 #云崽</div>
+                </PrimaryDiv>
+              )
+            }
+          ]}
+        />
       )}
 
       {/* ── 确认弹窗 ── */}

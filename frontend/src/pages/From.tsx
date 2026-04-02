@@ -101,6 +101,18 @@ function Sel({
   );
 }
 
+function SaveBtn({ saved }: { saved: boolean }) {
+  return (
+    <Button
+      type='submit'
+      className={`px-3 py-1 rounded-lg text-[11px] font-semibold ${saved ? 'opacity-70' : ''}`}
+      style={!saved ? { background: 'linear-gradient(135deg, #d5c8b2 0%, #8f8c76 100%)' } : undefined}
+    >
+      {saved ? '✓ 已保存' : '💾 保存'}
+    </Button>
+  );
+}
+
 /* ─── 主组件 ─── */
 
 export default function Form({ section }: { section: string }) {
@@ -182,16 +194,6 @@ export default function Form({ section }: { section: string }) {
 
   return (
     <form onSubmit={handleSubmit} className='py-2 space-y-3'>
-      <div className='sticky top-0 z-10 flex justify-end pb-1'>
-        <Button
-          type='submit'
-          className={`px-5 py-1.5 rounded-xl text-sm font-semibold shadow-sm ${saved ? 'animate-save-pop opacity-70' : 'hover:shadow-md'}`}
-          style={!saved ? { background: 'linear-gradient(135deg, #d5c8b2 0%, #8f8c76 100%)' } : undefined}
-        >
-          {saved ? '✓ 已保存' : '💾 保存'}
-        </Button>
-      </div>
-
       <div
         className='rounded-xl px-4 py-2.5 text-[12px] opacity-50 text-center'
         style={{ background: 'rgba(234,179,8,.08)', border: '1px solid rgba(234,179,8,.15)' }}
@@ -201,9 +203,12 @@ export default function Form({ section }: { section: string }) {
 
       {section === 'qq' && (
         <SecondaryDiv className='rounded-xl overflow-hidden animate-fade-in'>
-          <HeaderDiv className='px-4 py-2.5 flex items-center gap-2'>
-            <span className='text-sm font-semibold'>💬 QQ 账号</span>
-            <TagDiv className='px-2 py-0.5 rounded-full text-[10px]'>qq.yaml</TagDiv>
+          <HeaderDiv className='px-4 py-2.5 flex items-center justify-between'>
+            <div className='flex items-center gap-2'>
+              <span className='text-sm font-semibold'>💬 QQ 账号</span>
+              <TagDiv className='px-2 py-0.5 rounded-full text-[10px]'>qq.yaml</TagDiv>
+            </div>
+            <SaveBtn saved={saved} />
           </HeaderDiv>
           <PrimaryDiv className='px-4 py-0.5 divide-y divide-gray-200/10'>
             <Row label='QQ 号'>
@@ -231,9 +236,12 @@ export default function Form({ section }: { section: string }) {
 
       {section === 'feature' && (
         <SecondaryDiv className='rounded-xl overflow-hidden animate-fade-in'>
-          <HeaderDiv className='px-4 py-2.5 flex items-center gap-2'>
-            <span className='text-sm font-semibold'>🔧 功能开关</span>
-            <TagDiv className='px-2 py-0.5 rounded-full text-[10px]'>other.yaml</TagDiv>
+          <HeaderDiv className='px-4 py-2.5 flex items-center justify-between'>
+            <div className='flex items-center gap-2'>
+              <span className='text-sm font-semibold'>🔧 功能开关</span>
+              <TagDiv className='px-2 py-0.5 rounded-full text-[10px]'>other.yaml</TagDiv>
+            </div>
+            <SaveBtn saved={saved} />
           </HeaderDiv>
           <PrimaryDiv className='px-4 py-0.5 divide-y divide-gray-200/10'>
             <Row label='主人 QQ' tip='Yunzai masterQQ，逗号分隔'>
@@ -263,9 +271,12 @@ export default function Form({ section }: { section: string }) {
 
       {section === 'runtime' && (
         <SecondaryDiv className='rounded-xl overflow-hidden animate-fade-in'>
-          <HeaderDiv className='px-4 py-2.5 flex items-center gap-2'>
-            <span className='text-sm font-semibold'>⚙️ 运行配置</span>
-            <TagDiv className='px-2 py-0.5 rounded-full text-[10px]'>bot.yaml</TagDiv>
+          <HeaderDiv className='px-4 py-2.5 flex items-center justify-between'>
+            <div className='flex items-center gap-2'>
+              <span className='text-sm font-semibold'>⚙️ 运行配置</span>
+              <TagDiv className='px-2 py-0.5 rounded-full text-[10px]'>bot.yaml</TagDiv>
+            </div>
+            <SaveBtn saved={saved} />
           </HeaderDiv>
           <PrimaryDiv className='px-4 py-0.5 divide-y divide-gray-200/10'>
             <Row label='日志等级'>
@@ -306,9 +317,12 @@ export default function Form({ section }: { section: string }) {
 
       {section === 'blacklist' && (
         <SecondaryDiv className='rounded-xl overflow-hidden animate-fade-in'>
-          <HeaderDiv className='px-4 py-2.5 flex items-center gap-2'>
-            <span className='text-sm font-semibold'>📋 黑白名单</span>
-            <TagDiv className='px-2 py-0.5 rounded-full text-[10px]'>other.yaml</TagDiv>
+          <HeaderDiv className='px-4 py-2.5 flex items-center justify-between'>
+            <div className='flex items-center gap-2'>
+              <span className='text-sm font-semibold'>📋 黑白名单</span>
+              <TagDiv className='px-2 py-0.5 rounded-full text-[10px]'>other.yaml</TagDiv>
+            </div>
+            <SaveBtn saved={saved} />
           </HeaderDiv>
           <PrimaryDiv className='px-4 py-0.5 divide-y divide-gray-200/10'>
             <Row label='白名单群' tip='逗号分隔，配置后仅在这些群生效'>
@@ -329,9 +343,12 @@ export default function Form({ section }: { section: string }) {
 
       {section === 'group' && (
         <SecondaryDiv className='rounded-xl overflow-hidden animate-fade-in'>
-          <HeaderDiv className='px-4 py-2.5 flex items-center gap-2'>
-            <span className='text-sm font-semibold'>👥 群聊配置</span>
-            <TagDiv className='px-2 py-0.5 rounded-full text-[10px]'>group.yaml</TagDiv>
+          <HeaderDiv className='px-4 py-2.5 flex items-center justify-between'>
+            <div className='flex items-center gap-2'>
+              <span className='text-sm font-semibold'>👥 群聊配置</span>
+              <TagDiv className='px-2 py-0.5 rounded-full text-[10px]'>group.yaml</TagDiv>
+            </div>
+            <SaveBtn saved={saved} />
           </HeaderDiv>
           <PrimaryDiv className='px-4 py-0.5 divide-y divide-gray-200/10'>
             <Row label='全局冷却(ms)'>
@@ -372,9 +389,12 @@ export default function Form({ section }: { section: string }) {
 
       {section === 'redis' && (
         <SecondaryDiv className='rounded-xl overflow-hidden animate-fade-in'>
-          <HeaderDiv className='px-4 py-2.5 flex items-center gap-2'>
-            <span className='text-sm font-semibold'>🗄️ Redis</span>
-            <TagDiv className='px-2 py-0.5 rounded-full text-[10px]'>redis.yaml</TagDiv>
+          <HeaderDiv className='px-4 py-2.5 flex items-center justify-between'>
+            <div className='flex items-center gap-2'>
+              <span className='text-sm font-semibold'>🗄️ Redis</span>
+              <TagDiv className='px-2 py-0.5 rounded-full text-[10px]'>redis.yaml</TagDiv>
+            </div>
+            <SaveBtn saved={saved} />
           </HeaderDiv>
           <PrimaryDiv className='px-4 py-0.5 divide-y divide-gray-200/10'>
             <Row label='地址'>
@@ -398,9 +418,12 @@ export default function Form({ section }: { section: string }) {
 
       {section === 'notice' && (
         <SecondaryDiv className='rounded-xl overflow-hidden animate-fade-in'>
-          <HeaderDiv className='px-4 py-2.5 flex items-center gap-2'>
-            <span className='text-sm font-semibold'>🔔 通知推送</span>
-            <TagDiv className='px-2 py-0.5 rounded-full text-[10px]'>notice.yaml</TagDiv>
+          <HeaderDiv className='px-4 py-2.5 flex items-center justify-between'>
+            <div className='flex items-center gap-2'>
+              <span className='text-sm font-semibold'>🔔 通知推送</span>
+              <TagDiv className='px-2 py-0.5 rounded-full text-[10px]'>notice.yaml</TagDiv>
+            </div>
+            <SaveBtn saved={saved} />
           </HeaderDiv>
           <PrimaryDiv className='px-4 py-0.5 divide-y divide-gray-200/10'>
             <Row label='IYUU Token'>

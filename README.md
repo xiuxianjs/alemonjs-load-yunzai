@@ -10,15 +10,17 @@
 
 ### 安装
 
-请访问官网 https://alemonjs.com 先安装 桌面/web版
+请访问官网 https://alemonjs.com 先安装 桌面/web版,
 
-- 地址
+或者在官网简单的了解一下一些对于该框架的基本内容
+
+- 仓库地址
 
 ```sh
 https://github.com/xiuxianjs/alemonjs-load-yunzai.git
 ```
 
-- branch
+- 仓库分支
 
 ```sh
 release

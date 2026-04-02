@@ -313,7 +313,37 @@ export const activate = context => {
             busyTask: manager.busyTaskName,
             plugins: installedPlugins,
             catalog,
-            logCount: manager.isInstalled ? getLogCount() : 0
+            logCount: manager.isInstalled ? getLogCount() : 0,
+            help: {
+              installFlow: [
+                { step: '①', label: '安装框架', cmd: '#yz安装', desc: '克隆 Yunzai 仓库' },
+                { step: '②', label: '安装插件', cmd: '#yz安装插件miao', desc: '按需安装游戏插件' },
+                { step: '③', label: '安装依赖', cmd: '#yz安装依赖', desc: '统一安装所有依赖' },
+                { step: '④', label: '启动', cmd: '#yz启动', desc: '启动 Worker 进程' }
+              ],
+              controls: [
+                { cmd: '#yz安装', desc: '安装 Yunzai 框架', color: 'green' },
+                { cmd: '#yz安装插件', desc: '安装指定插件', color: 'green' },
+                { cmd: '#yz安装依赖', desc: '重新安装所有依赖', color: 'blue' },
+                { cmd: '#yz启动', desc: '启动 Worker', color: 'green' },
+                { cmd: '#yz停止', desc: '停止 Worker', color: 'orange' },
+                { cmd: '#yz重启', desc: '停止后重新启动', color: 'blue' },
+                { cmd: '#yz更新', desc: '拉取代码+装依赖+重启', color: 'blue' },
+                { cmd: '#yz强制更新', desc: '重置本地+更新+装依赖', color: 'red' },
+                { cmd: '#yz更新插件', desc: '更新指定插件', color: 'blue' },
+                { cmd: '#yz强制更新插件', desc: '重置+更新指定插件', color: 'red' }
+              ],
+              tools: [
+                { cmd: '#yz状态', desc: '查看当前运行状态', color: 'orange' },
+                { cmd: '#yz取消', desc: '取消正在执行的任务', color: 'orange' },
+                { cmd: '#yz插件帮助', desc: '查看插件列表', color: 'green' },
+                { cmd: '#yz插件说明', desc: '查看插件 README', color: 'green' },
+                { cmd: '#yz日志清理', desc: '清理所有日志文件', color: 'orange' },
+                { cmd: '#yz卸载插件', desc: '卸载指定插件', color: 'red' },
+                { cmd: '#yz卸载', desc: '停止并删除 Yunzai', color: 'red' },
+                { cmd: '#yz帮助', desc: '查看本帮助图', color: 'orange' }
+              ]
+            }
           }
         });
       } else if (data.type === 'yunzai.action') {

@@ -60,12 +60,9 @@ export default function App() {
   const isRepo = REPO_KEYS.includes(activeKey);
 
   return (
-    <SecondaryDiv className='min-h-screen lg:flex'>
+    <SecondaryDiv className='min-h-screen lg:h-screen lg:flex lg:overflow-hidden'>
       {/* ── PC 侧边栏 ── */}
-      <SidebarDiv
-        className='hidden lg:flex lg:flex-col w-44 shrink-0 px-2 py-3 sticky top-0 h-screen overflow-y-auto'
-        style={{ borderRight: '1px solid rgba(128,128,128,.08)' }}
-      >
+      <SidebarDiv className='hidden lg:flex lg:flex-col w-44 shrink-0 px-2 py-3 overflow-y-auto' style={{ borderRight: '1px solid rgba(128,128,128,.08)' }}>
         <div className='flex items-center gap-2 px-3 py-2 mb-3'>
           <div
             className='w-7 h-7 rounded-lg flex items-center justify-center text-sm shadow-sm'
@@ -102,7 +99,7 @@ export default function App() {
       </SidebarDiv>
 
       {/* ── 主内容区 ── */}
-      <div className='flex-1 min-h-screen flex flex-col min-w-0'>
+      <div className='flex-1 flex flex-col min-w-0 lg:overflow-y-auto'>
         {/* ── 移动端导航 ── */}
         <div className='lg:hidden'>
           <HeaderDiv className='px-3 py-2.5 flex items-center gap-2.5'>

@@ -54,6 +54,10 @@ export interface IPCEventMessage {
     // ── 权限 ──
     isMaster: boolean;
 
+    // ── @提及信息（跨平台提取，无 rawEvent 时用于构建 at 段） ──
+    /** 被@的用户列表 */
+    atUsers?: { userId: string; userName?: string }[];
+
     // ── OneBot 原始事件（仅 QQ/OneBot 平台） ──
     /** 完整的 OneBot 标准事件对象，包含 message 段、sender 详情等 */
     rawEvent?: any;
