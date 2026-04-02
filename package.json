@@ -1,13 +1,14 @@
 {
   "name": "alemonjs-load-yunzai",
-  "version": "0.0.16",
+  "version": "0.0.17",
   "description": "yunzai-bot",
   "author": "ningmengchongshui",
   "type": "module",
   "main": "./lib/index.js",
   "exports": {
     ".": "./lib/index.js",
-    "./package": "./package.json"
+    "./package": "./package.json",
+    "./desktop": "./lib/desktop.js"
   },
   "dependencies": {
     "classnames": "^2.5.1",
@@ -17,24 +18,16 @@
   },
   "alemonjs": {
     "desktop": {
-      "platform": [
-        {
-          "name": "yunzai"
-        }
-      ],
-      "logo": "antd.QqOutlined",
-      "commond": [
+      "command": [
         {
           "name": "yunzai",
-          "icon": "antd.QqOutlined",
-          "commond": "open.yunzai"
+          "command": "open.yunzai"
         }
       ],
       "sidebars": [
         {
           "name": "yunzai",
-          "icon": "antd.QqOutlined",
-          "commond": "open.yunzai"
+          "command": "open.yunzai"
         }
       ]
     }
