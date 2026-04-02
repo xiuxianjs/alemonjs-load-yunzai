@@ -20,6 +20,10 @@ export interface IPCEventMessage {
         spaceId: string;
         isPrivate: boolean;
         isMaster: boolean;
+        atUsers?: {
+            userId: string;
+            userName?: string;
+        }[];
         rawEvent?: any;
     };
 }

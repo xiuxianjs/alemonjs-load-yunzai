@@ -6,15 +6,21 @@
 
 - 是OneBot优先的，确保最大程度上适用于所有Yunzai插件，其他平台适配情况则完全依赖于框架的通用模型
 
-### alemongo/alemondesk
+<img src="./image.png">
 
-- 地址
+### 安装
+
+请访问官网 https://alemonjs.com 先安装 桌面/web版,
+
+或者在官网简单的了解一下一些对于该框架的基本内容
+
+- 仓库地址
 
 ```sh
 https://github.com/xiuxianjs/alemonjs-load-yunzai.git
 ```
 
-- branch
+- 仓库分支
 
 ```sh
 release
