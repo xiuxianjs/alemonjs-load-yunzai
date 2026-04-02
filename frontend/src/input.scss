@@ -7,3 +7,129 @@ textarea {
   outline: 2px solid transparent !important;
   outline-offset: 2px !important;
 }
+
+/* ── 全局过渡 ── */
+* {
+  transition-property: background-color, border-color, box-shadow, opacity, transform;
+  transition-duration: 180ms;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* ── 卡片悬浮效果 ── */
+.card-hover {
+  transition:
+    transform 180ms ease,
+    box-shadow 180ms ease;
+
+  &:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  }
+}
+
+/* ── 分区左侧彩条 ── */
+.section-accent {
+  position: relative;
+
+  &::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 8px;
+    bottom: 8px;
+    width: 3px;
+    border-radius: 2px;
+    background: var(--alemonjs-button-bg-hover, #8f8c76);
+    opacity: 0.5;
+  }
+}
+
+/* ── 行内悬浮高亮 ── */
+.row-hover {
+  border-radius: 8px;
+  padding-left: 12px;
+  padding-right: 12px;
+  margin-left: -12px;
+  margin-right: -12px;
+  transition: background-color 150ms ease;
+
+  &:hover {
+    background-color: rgba(0, 0, 0, 0.03);
+  }
+}
+
+@media (prefers-color-scheme: dark) {
+  .row-hover:hover {
+    background-color: rgba(255, 255, 255, 0.04);
+  }
+
+  .card-hover:hover {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+  }
+}
+
+/* ── 脉冲动画 ── */
+@keyframes pulse-dot {
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.5;
+  }
+}
+
+.animate-pulse-dot {
+  animation: pulse-dot 2s ease-in-out infinite;
+}
+
+/* ── 渐入动画 ── */
+@keyframes fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in {
+  animation: fade-in-up 300ms ease-out;
+}
+
+/* ── 保存按钮成功态 ── */
+@keyframes save-pop {
+  0% {
+    transform: scale(1);
+  }
+
+  50% {
+    transform: scale(1.05);
+  }
+
+  100% {
+    transform: scale(1);
+  }
+}
+
+.animate-save-pop {
+  animation: save-pop 300ms ease;
+}
+
+/* ── 玻璃态 ── */
+.glass {
+  backdrop-filter: blur(12px) saturate(1.5);
+  -webkit-backdrop-filter: blur(12px) saturate(1.5);
+}
+
+/* ── 渐变标题装饰 ── */
+.gradient-text {
+  background: linear-gradient(135deg, #657b83 0%, #268bd2 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}

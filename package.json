@@ -7,7 +7,8 @@
   "main": "./lib/index.js",
   "exports": {
     ".": "./lib/index.js",
-    "./package": "./package.json"
+    "./package": "./package.json",
+    "./desktop": "./lib/desktop.js"
   },
   "scripts": {
     "app": "node index.js",
@@ -48,24 +49,16 @@
   },
   "alemonjs": {
     "desktop": {
-      "platform": [
-        {
-          "name": "yunzai"
-        }
-      ],
-      "logo": "antd.QqOutlined",
-      "commond": [
+      "command": [
         {
           "name": "yunzai",
-          "icon": "antd.QqOutlined",
-          "commond": "open.yunzai"
+          "command": "open.yunzai"
         }
       ],
       "sidebars": [
         {
           "name": "yunzai",
-          "icon": "antd.QqOutlined",
-          "commond": "open.yunzai"
+          "command": "open.yunzai"
         }
       ]
     }

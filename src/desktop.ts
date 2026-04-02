@@ -1,7 +1,8 @@
 import { getConfig, getConfigValue } from 'alemonjs';
-import { existsSync, readdirSync, readFileSync, rmSync } from 'fs';
+import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'fs';
 import { dirname, join } from 'path';
 import { fileURLToPath } from 'url';
+import YAML from 'yaml';
 import { getPluginInfo, getYunzaiDir } from './path';
 import { manager } from './yunzai/manager';
 // 当前目录
@@ -29,6 +30,63 @@ function getLogCount(): number {
   }
 
   return readdirSync(logsDir).filter(f => f.endsWith('.log')).length;
+}
+
+// ─── YAML 配置读写 ───
+
+/** 获取 Yunzai config/config 目录 */
+function getConfigDir(): string {
+  return join(getYunzaiDir(), 'config', 'config');
+}
+
+/** 读取单个 YAML 配置，不存在则返回空对象 */
+function readYaml(name: string): Record<string, unknown> {
+  const file = join(getConfigDir(), `${name}.yaml`);
+
+  if (!existsSync(file)) {
+    return {};
+  }
+
+  try {
+    return (YAML.parse(readFileSync(file, 'utf-8')) as Record<string, unknown>) ?? {};
+  } catch {
+    return {};
+  }
+}
+
+/** 写入单个 YAML 配置 */
+function writeYaml(name: string, data: Record<string, unknown>): void {
+  const dir = getConfigDir();
+
+  if (!existsSync(dir)) {
+    mkdirSync(dir, { recursive: true });
+  }
+  writeFileSync(join(dir, `${name}.yaml`), YAML.stringify(data), 'utf-8');
+}
+
+/** 逗号分隔字符串 → 非空数组或 null */
+function csv2arr(v: unknown): string[] | null {
+  if (!v) {
+    return null;
+  }
+  const arr = String(v)
+    .split(',')
+    .map(s => s.trim())
+    .filter(Boolean);
+
+  return arr.length > 0 ? arr : null;
+}
+
+/** 逗号分隔字符串 → 数字数组（用于 QQ 号、群号） */
+function csv2numArr(v: unknown): number[] | null {
+  const arr = csv2arr(v);
+
+  if (!arr) {
+    return null;
+  }
+  const nums = arr.map(Number).filter(n => !isNaN(n));
+
+  return nums.length > 0 ? nums : null;
 }
 
 // 被激活的时候。
@@ -60,41 +118,136 @@ export const activate = context => {
     try {
       if (data.type === 'yunzai.form.save') {
         const db = data.data;
-        const config = getConfig();
-        const value = config.value ?? {};
 
-        // yunzai 命名空间：主人配置 + 运行配置
-        value['yunzai'] = {
-          ...value['yunzai'],
-          master_key: db.master_key?.split(',').filter(Boolean) ?? null,
-          master_id: db.master_id?.split(',').filter(Boolean) ?? null,
-          log_level: db.log_level,
-          autoFriend: db.autoFriend,
-          autoQuit: Number(db.autoQuit) || 0,
-          disablePrivate: db.disablePrivate,
-          disableGuildMsg: db.disableGuildMsg
-        };
+        // ── 写入 Yunzai YAML 配置文件 ──
 
-        // alemonjs-load-yunzai 命名空间：仓库 + 代理配置
-        const pkg = value['alemonjs-load-yunzai'] ?? {};
+        // bot.yaml
+        const bot = readYaml('bot');
 
-        if (db.gh_proxy) {
-          pkg.gh_proxy = db.gh_proxy;
-        }
-        if (db.bot_name) {
-          pkg.bot_name = db.bot_name;
-        }
-        if (db.yunzai_repo) {
-          pkg.yunzai_repo = db.yunzai_repo;
-        }
-        if (db.miao_plugin_repo) {
-          pkg.miao_plugin_repo = db.miao_plugin_repo;
-        }
-        value['alemonjs-load-yunzai'] = pkg;
+        bot.log_level = db.log_level ?? 'info';
+        bot.resend = db.resend === true || db.resend === 'true';
+        bot.online_msg = db.online_msg !== false && db.online_msg !== 'false';
+        bot.online_msg_exp = Number(db.online_msg_exp) || 86400;
+        bot.chromium_path = db.chromium_path ?? '';
+        bot.puppeteer_ws = db.puppeteer_ws ?? '';
+        bot.puppeteer_timeout = db.puppeteer_timeout ? Number(db.puppeteer_timeout) : '';
+        bot.proxyAddress = db.proxyAddress ?? '';
+        bot.sign_api_addr = db.sign_api_addr ?? '';
+        writeYaml('bot', bot);
 
-        config.saveValue(value);
+        // other.yaml
+        const other = readYaml('other');
+
+        other.autoFriend = Number(db.autoFriend) || 0;
+        other.autoQuit = Number(db.autoQuit) || 0;
+        other.masterQQ = csv2numArr(db.masterQQ);
+        other.disablePrivate = db.disablePrivate === true || db.disablePrivate === 'true';
+        other.disableGuildMsg = db.disableGuildMsg !== false && db.disableGuildMsg !== 'false';
+        other.disableMsg = db.disableMsg ?? '';
+        other.whiteGroup = csv2numArr(db.whiteGroup);
+        other.whiteQQ = csv2numArr(db.whiteQQ);
+        other.blackGroup = csv2numArr(db.blackGroup);
+        other.blackQQ = csv2numArr(db.blackQQ);
+        writeYaml('other', other);
+
+        // qq.yaml
+        const qq: Record<string, unknown> = readYaml('qq');
+
+        qq.qq = db.qq ? Number(db.qq) || db.qq : '';
+        qq.pwd = db.pwd ?? '';
+        qq.platform = Number(db.platform) || 6;
+        writeYaml('qq', qq);
+
+        // redis.yaml
+        writeYaml('redis', {
+          host: db.redis_host ?? '127.0.0.1',
+          port: Number(db.redis_port) || 6379,
+          username: db.redis_username ?? '',
+          password: db.redis_password ?? '',
+          db: Number(db.redis_db) || 0
+        });
+
+        // group.yaml — 只更新 default 部分，保留其他群配置
+        const group = readYaml('group');
+        const groupDefault = (group.default as Record<string, unknown>) ?? {};
+
+        groupDefault.groupGlobalCD = Number(db.groupGlobalCD) || 0;
+        groupDefault.singleCD = Number(db.singleCD) || 0;
+        groupDefault.onlyReplyAt = Number(db.onlyReplyAt) || 0;
+        groupDefault.botAlias = csv2arr(db.botAlias);
+        groupDefault.imgAddLimit = Number(db.imgAddLimit) || 0;
+        groupDefault.imgMaxSize = Number(db.imgMaxSize) || 2;
+        groupDefault.addPrivate = Number(db.addPrivate);
+        group.default = groupDefault;
+        writeYaml('group', group);
+
+        // notice.yaml
+        writeYaml('notice', {
+          iyuu: db.iyuu ?? '',
+          sct: db.sct ?? '',
+          feishu_webhook: db.feishu_webhook ?? ''
+        });
+
         context.notification('Yunzai 配置保存成功～');
       } else if (data.type === 'yunzai.init') {
+        // 读取 Yunzai YAML 配置
+        const bot = readYaml('bot');
+        const other = readYaml('other');
+        const qq = readYaml('qq');
+        const redis = readYaml('redis');
+        const group = readYaml('group');
+        const groupDef = (group.default as Record<string, unknown>) ?? {};
+        const notice = readYaml('notice');
+
+        webView.postMessage({
+          type: 'yunzai.init',
+          data: {
+            // bot.yaml
+            log_level: bot.log_level ?? 'info',
+            resend: bot.resend ?? false,
+            online_msg: bot.online_msg ?? true,
+            online_msg_exp: bot.online_msg_exp ?? 86400,
+            chromium_path: bot.chromium_path ?? '',
+            puppeteer_ws: bot.puppeteer_ws ?? '',
+            puppeteer_timeout: bot.puppeteer_timeout ?? '',
+            proxyAddress: bot.proxyAddress ?? '',
+            sign_api_addr: bot.sign_api_addr ?? '',
+            // other.yaml
+            autoFriend: other.autoFriend ?? 1,
+            autoQuit: other.autoQuit ?? 50,
+            masterQQ: other.masterQQ,
+            disablePrivate: other.disablePrivate ?? false,
+            disableGuildMsg: other.disableGuildMsg ?? true,
+            disableMsg: other.disableMsg ?? '',
+            whiteGroup: other.whiteGroup,
+            whiteQQ: other.whiteQQ,
+            blackGroup: other.blackGroup,
+            blackQQ: other.blackQQ,
+            // qq.yaml
+            qq: qq.qq ?? '',
+            pwd: qq.pwd ?? '',
+            platform: qq.platform ?? 6,
+            // redis.yaml
+            redis_host: redis.host ?? '127.0.0.1',
+            redis_port: redis.port ?? 6379,
+            redis_username: redis.username ?? '',
+            redis_password: redis.password ?? '',
+            redis_db: redis.db ?? 0,
+            // group.yaml (default)
+            groupGlobalCD: groupDef.groupGlobalCD ?? 0,
+            singleCD: groupDef.singleCD ?? 1000,
+            onlyReplyAt: groupDef.onlyReplyAt ?? 0,
+            botAlias: groupDef.botAlias,
+            imgAddLimit: groupDef.imgAddLimit ?? 0,
+            imgMaxSize: groupDef.imgMaxSize ?? 2,
+            addPrivate: groupDef.addPrivate ?? 1,
+            // notice.yaml
+            iyuu: notice.iyuu ?? '',
+            sct: notice.sct ?? '',
+            feishu_webhook: notice.feishu_webhook ?? ''
+          }
+        });
+      } else if (data.type === 'repo.init') {
         let config = getConfigValue();
 
         if (!config) {
@@ -104,17 +257,37 @@ export const activate = context => {
         const yunzaiCfg = config['yunzai'] ?? {};
         const pkgCfg = config['alemonjs-load-yunzai'] ?? {};
 
-        // 合并两个命名空间的配置返回给前端
         webView.postMessage({
-          type: 'yunzai.init',
+          type: 'repo.init',
           data: {
-            ...yunzaiCfg,
+            master_key: yunzaiCfg.master_key,
+            master_id: yunzaiCfg.master_id,
             gh_proxy: pkgCfg.gh_proxy ?? '',
             bot_name: pkgCfg.bot_name ?? '',
             yunzai_repo: pkgCfg.yunzai_repo ?? '',
             miao_plugin_repo: pkgCfg.miao_plugin_repo ?? ''
           }
         });
+      } else if (data.type === 'repo.save') {
+        const db = data.data;
+        const config = getConfig();
+        const value = config.value ?? {};
+
+        value['yunzai'] = {
+          ...value['yunzai'],
+          master_key: csv2arr(db.master_key),
+          master_id: csv2arr(db.master_id)
+        };
+
+        const pkg = value['alemonjs-load-yunzai'] ?? {};
+
+        pkg.gh_proxy = db.gh_proxy ?? '';
+        pkg.bot_name = db.bot_name ?? '';
+        pkg.yunzai_repo = db.yunzai_repo ?? '';
+        pkg.miao_plugin_repo = db.miao_plugin_repo ?? '';
+        value['alemonjs-load-yunzai'] = pkg;
+        config.saveValue(value);
+        context.notification('仓库配置保存成功～');
       } else if (data.type === 'yunzai.status') {
         webView.postMessage({
           type: 'yunzai.status',

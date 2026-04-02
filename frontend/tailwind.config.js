@@ -7,7 +7,8 @@ export default {
   theme: {
     extend: {
       screens: {
-        xs: '320px' // 比 sm 小一半的尺寸
+        xs: '320px',
+        lg: '860px'
       }
     }
   }
