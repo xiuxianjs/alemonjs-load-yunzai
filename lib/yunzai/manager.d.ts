@@ -46,7 +46,7 @@ declare class YunzaiManager {
     private beginTask;
     private endTask;
     private throwIfCancelled;
-    private git;
+    private execGit;
     private npmInstall;
     installPlugin(plugin: PluginInfo): Promise<void>;
     updatePlugin(plugin: PluginInfo, force?: boolean): Promise<string>;
