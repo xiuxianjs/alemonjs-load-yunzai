@@ -6,7 +6,11 @@
 
 - 是OneBot优先的，确保最大程度上适用于所有Yunzai插件，其他平台适配情况则完全依赖于框架的通用模型
 
-### alemongo/alemondesk
+<img src="./image.png">
+
+### 安装
+
+请访问官网 https://alemonjs.com 先安装 桌面/web版
 
 - 地址
 
