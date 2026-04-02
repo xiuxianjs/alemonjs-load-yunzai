@@ -1,6 +1,14 @@
 import { Button, HeaderDiv, Input, PrimaryDiv, SecondaryDiv, TagDiv, Tooltip } from '@alemonjs/react-ui';
 import React, { useEffect, useState } from 'react';
 
+interface PluginEntry {
+  key: string;
+  dirName: string;
+  repoUrl: string;
+  label: string;
+  aliases: string;
+}
+
 const INITIAL = {
   master_key: '',
   master_id: '',
@@ -14,7 +22,7 @@ type RepoData = typeof INITIAL;
 
 function Row({ label, tip, children }: { label: string; tip?: string; children: React.ReactNode }) {
   return (
-    <div className='row-hover flex flex-col xs:flex-row xs:items-center xs:justify-between gap-1 xs:gap-3 py-2.5'>
+    <div className='row-hover flex  xs:items-center xs:justify-between gap-1 xs:gap-3 py-2.5'>
       <div className='flex items-center gap-1.5 shrink-0 text-sm font-medium opacity-75'>
         <span>{label}</span>
         {tip && (
@@ -23,13 +31,14 @@ function Row({ label, tip, children }: { label: string; tip?: string; children: 
           </Tooltip>
         )}
       </div>
-      <div className='w-full xs:flex-1 xs:max-w-[60%]'>{children}</div>
+      <div className='w-full xs:flex-1 xs:max-w-[65%]'>{children}</div>
     </div>
   );
 }
 
-export default function Repo() {
+export default function Repo({ section }: { section: string }) {
   const [formData, setFormData] = useState<RepoData>({ ...INITIAL });
+  const [plugins, setPlugins] = useState<PluginEntry[]>([]);
   const [saved, setSaved] = useState(false);
 
   useEffect(() => {
@@ -50,6 +59,23 @@ export default function Repo() {
           yunzai_repo: d.yunzai_repo ?? '',
           miao_plugin_repo: d.miao_plugin_repo ?? ''
         });
+
+        // 还原自定义插件列表
+        const raw = d.plugins ?? {};
+        const list: PluginEntry[] = [];
+
+        for (const [key, val] of Object.entries(raw as Record<string, any>)) {
+          if (val && typeof val === 'object' && val.dirName) {
+            list.push({
+              key,
+              dirName: val.dirName ?? '',
+              repoUrl: val.repoUrl ?? '',
+              label: val.label ?? '',
+              aliases: Array.isArray(val.aliases) ? val.aliases.join(',') : ''
+            });
+          }
+        }
+        setPlugins(list);
       }
     });
   }, []);
@@ -60,23 +86,53 @@ export default function Repo() {
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    window.API.postMessage({ type: 'repo.save', data: formData });
+
+    // 把 plugins 数组转成 key→object 结构
+    const pluginsObj: Record<string, any> = {};
+
+    for (const p of plugins) {
+      const k = p.key.trim();
+
+      if (!k || !p.dirName.trim()) {
+        continue;
+      }
+      pluginsObj[k] = {
+        dirName: p.dirName.trim(),
+        repoUrl: p.repoUrl.trim(),
+        label: p.label.trim() || p.dirName.trim(),
+        aliases: p.aliases
+          .split(',')
+          .map(s => s.trim())
+          .filter(Boolean)
+      };
+    }
+
+    window.API.postMessage({ type: 'repo.save', data: { ...formData, plugins: pluginsObj } });
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);
   };
 
   return (
-    <form onSubmit={handleSubmit} className='py-2 space-y-4'>
-      <div className='xl:grid xl:grid-cols-2 xl:gap-5 space-y-4 xl:space-y-0'>
-        {/* ── 主人认证 ── */}
+    <form onSubmit={handleSubmit} className='py-2 space-y-3'>
+      <div className='sticky top-0 z-10 flex justify-end pb-1'>
+        <Button
+          type='submit'
+          className={`px-5 py-1.5 rounded-xl text-sm font-semibold shadow-sm ${saved ? 'animate-save-pop opacity-70' : 'hover:shadow-md'}`}
+          style={!saved ? { background: 'linear-gradient(135deg, #d5c8b2 0%, #8f8c76 100%)' } : undefined}
+        >
+          {saved ? '✓ 已保存' : '💾 保存'}
+        </Button>
+      </div>
+
+      {section === 'auth' && (
         <SecondaryDiv className='rounded-xl overflow-hidden'>
-          <HeaderDiv className='px-5 py-3 flex items-center justify-between'>
+          <HeaderDiv className='px-4 py-2.5 flex items-center justify-between'>
             <div className='flex items-center gap-2'>
               <span className='text-sm font-semibold'>🔑 主人认证</span>
               <TagDiv className='px-2 py-0.5 rounded-full text-[10px]'>AlemonJS</TagDiv>
             </div>
           </HeaderDiv>
-          <PrimaryDiv className='px-5 py-1 divide-y divide-gray-200/10'>
+          <PrimaryDiv className='px-4 py-0.5 divide-y divide-gray-200/10'>
             <Row label='Master Key' tip='AlemonJS 主人密钥，逗号分隔多个'>
               <Input
                 name='master_key'
@@ -97,16 +153,17 @@ export default function Repo() {
             </Row>
           </PrimaryDiv>
         </SecondaryDiv>
+      )}
 
-        {/* ── 仓库地址 ── */}
+      {section === 'gitrepo' && (
         <SecondaryDiv className='rounded-xl overflow-hidden'>
-          <HeaderDiv className='px-5 py-3 flex items-center justify-between'>
+          <HeaderDiv className='px-4 py-2.5 flex items-center justify-between'>
             <div className='flex items-center gap-2'>
               <span className='text-sm font-semibold'>📦 仓库地址</span>
               <TagDiv className='px-2 py-0.5 rounded-full text-[10px]'>Git</TagDiv>
             </div>
           </HeaderDiv>
-          <PrimaryDiv className='px-5 py-1 divide-y divide-gray-200/10'>
+          <PrimaryDiv className='px-4 py-0.5 divide-y divide-gray-200/10'>
             <Row label='Yunzai 仓库'>
               <Input
                 name='yunzai_repo'
@@ -127,45 +184,150 @@ export default function Repo() {
             </Row>
           </PrimaryDiv>
         </SecondaryDiv>
-      </div>
+      )}
 
-      {/* ── 网络配置 ── */}
-      <SecondaryDiv className='rounded-xl overflow-hidden'>
-        <HeaderDiv className='px-5 py-3'>
-          <span className='text-sm font-semibold'>🌐 网络配置</span>
-        </HeaderDiv>
-        <PrimaryDiv className='px-5 py-1 divide-y divide-gray-200/10'>
-          <Row label='GitHub 代理' tip='国内加速代理地址'>
-            <Input
-              name='gh_proxy'
-              value={formData.gh_proxy}
-              placeholder='https://ghfast.top/'
-              onChange={handleChange}
-              className='w-full px-3 py-1.5 text-sm rounded-lg'
-            />
-          </Row>
-          <Row label='目录名' tip='本地 Yunzai 目录名称'>
-            <Input
-              name='bot_name'
-              value={formData.bot_name}
-              placeholder='Miao-Yunzai'
-              onChange={handleChange}
-              className='w-full px-3 py-1.5 text-sm rounded-lg'
-            />
-          </Row>
-        </PrimaryDiv>
-      </SecondaryDiv>
+      {section === 'network' && (
+        <SecondaryDiv className='rounded-xl overflow-hidden'>
+          <HeaderDiv className='px-4 py-2.5'>
+            <span className='text-sm font-semibold'>🌐 网络配置</span>
+          </HeaderDiv>
+          <PrimaryDiv className='px-4 py-0.5 divide-y divide-gray-200/10'>
+            <Row label='GitHub 代理' tip='国内加速代理地址'>
+              <Input
+                name='gh_proxy'
+                value={formData.gh_proxy}
+                placeholder='https://ghfast.top/'
+                onChange={handleChange}
+                className='w-full px-3 py-1.5 text-sm rounded-lg'
+              />
+            </Row>
+            <Row label='目录名' tip='本地 Yunzai 目录名称'>
+              <Input
+                name='bot_name'
+                value={formData.bot_name}
+                placeholder='Miao-Yunzai'
+                onChange={handleChange}
+                className='w-full px-3 py-1.5 text-sm rounded-lg'
+              />
+            </Row>
+          </PrimaryDiv>
+        </SecondaryDiv>
+      )}
 
-      {/* ── 保存 ── */}
-      <div className='flex justify-end'>
-        <Button
-          type='submit'
-          className={`px-6 py-2 rounded-xl text-sm font-semibold shadow-sm ${saved ? 'animate-save-pop opacity-70' : 'hover:shadow-md'}`}
-          style={!saved ? { background: 'linear-gradient(135deg, #d5c8b2 0%, #8f8c76 100%)' } : undefined}
-        >
-          {saved ? '✓ 已保存' : '💾 保存'}
-        </Button>
-      </div>
+      {section === 'plugins' && (
+        <SecondaryDiv className='rounded-xl overflow-hidden'>
+          <HeaderDiv className='px-4 py-2.5 flex items-center justify-between'>
+            <div className='flex items-center gap-2'>
+              <span className='text-sm font-semibold'>🧩 自定义插件来源</span>
+              <TagDiv className='px-2 py-0.5 rounded-full text-[10px]'>{plugins.length}</TagDiv>
+            </div>
+            <Button
+              type='button'
+              className='px-3 py-1 text-[11px] rounded-lg font-medium'
+              onClick={() => setPlugins(prev => [...prev, { key: '', dirName: '', repoUrl: '', label: '', aliases: '' }])}
+            >
+              + 添加
+            </Button>
+          </HeaderDiv>
+          {plugins.length === 0 ? (
+            <PrimaryDiv className='px-4 py-4 text-center'>
+              <div className='text-sm opacity-40'>暂无自定义插件，点击「添加」定义新的插件来源</div>
+              <div className='text-[11px] opacity-25 mt-1'>添加后会与内置插件目录合并显示在插件管理页</div>
+            </PrimaryDiv>
+          ) : (
+            <div className='divide-y divide-gray-200/10'>
+              {plugins.map((p, idx) => (
+                <PrimaryDiv key={idx} className='px-4 py-3 space-y-2'>
+                  <div className='flex items-center justify-between'>
+                    <span className='text-[11px] opacity-40 font-medium'>插件 #{idx + 1}</span>
+                    <Button
+                      type='button'
+                      className='px-2 py-0.5 text-[10px] rounded text-red-400'
+                      onClick={() => setPlugins(prev => prev.filter((_, i) => i !== idx))}
+                    >
+                      删除
+                    </Button>
+                  </div>
+                  <div className='grid grid-cols-2 gap-2'>
+                    <div>
+                      <div className='text-[10px] opacity-40 mb-1'>别名键 *</div>
+                      <Input
+                        value={p.key}
+                        placeholder='如: 我的插件'
+                        onChange={e => {
+                          const list = [...plugins];
+
+                          list[idx] = { ...list[idx], key: e.target.value };
+                          setPlugins(list);
+                        }}
+                        className='w-full px-2.5 py-1 text-xs rounded-lg'
+                      />
+                    </div>
+                    <div>
+                      <div className='text-[10px] opacity-40 mb-1'>目录名 *</div>
+                      <Input
+                        value={p.dirName}
+                        placeholder='my-plugin'
+                        onChange={e => {
+                          const list = [...plugins];
+
+                          list[idx] = { ...list[idx], dirName: e.target.value };
+                          setPlugins(list);
+                        }}
+                        className='w-full px-2.5 py-1 text-xs rounded-lg'
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <div className='text-[10px] opacity-40 mb-1'>仓库地址 *</div>
+                    <Input
+                      value={p.repoUrl}
+                      placeholder='https://github.com/xxx/my-plugin.git'
+                      onChange={e => {
+                        const list = [...plugins];
+
+                        list[idx] = { ...list[idx], repoUrl: e.target.value };
+                        setPlugins(list);
+                      }}
+                      className='w-full px-2.5 py-1 text-xs rounded-lg'
+                    />
+                  </div>
+                  <div className='grid grid-cols-2 gap-2'>
+                    <div>
+                      <div className='text-[10px] opacity-40 mb-1'>显示名称</div>
+                      <Input
+                        value={p.label}
+                        placeholder='默认同目录名'
+                        onChange={e => {
+                          const list = [...plugins];
+
+                          list[idx] = { ...list[idx], label: e.target.value };
+                          setPlugins(list);
+                        }}
+                        className='w-full px-2.5 py-1 text-xs rounded-lg'
+                      />
+                    </div>
+                    <div>
+                      <div className='text-[10px] opacity-40 mb-1'>更多别名</div>
+                      <Input
+                        value={p.aliases}
+                        placeholder='别名1,别名2'
+                        onChange={e => {
+                          const list = [...plugins];
+
+                          list[idx] = { ...list[idx], aliases: e.target.value };
+                          setPlugins(list);
+                        }}
+                        className='w-full px-2.5 py-1 text-xs rounded-lg'
+                      />
+                    </div>
+                  </div>
+                </PrimaryDiv>
+              ))}
+            </div>
+          )}
+        </SecondaryDiv>
+      )}
     </form>
   );
 }

@@ -9,7 +9,14 @@ textarea {
 }
 
 /* ── 全局过渡 ── */
-* {
+button,
+a,
+input,
+select,
+textarea,
+[role='button'],
+.card-hover,
+.row-hover {
   transition-property: background-color, border-color, box-shadow, opacity, transform;
   transition-duration: 180ms;
   transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
@@ -132,4 +139,20 @@ textarea {
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
+}
+
+/* ── 侧边导航激活指示 ── */
+.nav-active {
+  position: relative;
+
+  &::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 6px;
+    bottom: 6px;
+    width: 3px;
+    border-radius: 2px;
+    background: var(--alemonjs-button-bg-hover, #8f8c76);
+  }
 }

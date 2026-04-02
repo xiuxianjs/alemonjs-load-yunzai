@@ -2,6 +2,7 @@ import { HeaderDiv, SecondaryDiv, SidebarDiv } from '@alemonjs/react-ui';
 import React, { useState } from 'react';
 import From from './From';
 import Manage from './Manage';
+import Plugin from './Plugin';
 import Repo from './Repo';
 
 /* 在渲染前初始化 Desktop API */
@@ -19,13 +20,21 @@ const CONFIG_SECTIONS = [
   { key: 'notice', label: '🔔 通知推送', short: '🔔 通知' }
 ];
 
+const REPO_SECTIONS = [
+  { key: 'auth', label: '🔑 主人认证', short: '🔑 认证' },
+  { key: 'gitrepo', label: '📦 仓库地址', short: '📦 仓库' },
+  { key: 'network', label: '🌐 网络配置', short: '🌐 网络' },
+  { key: 'plugins', label: '🧩 插件来源', short: '🧩 来源' }
+];
+
 const CONFIG_KEYS = CONFIG_SECTIONS.map(s => s.key);
+const REPO_KEYS = REPO_SECTIONS.map(s => s.key);
 
 function NavItem({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
   return (
     <button
       onClick={onClick}
-      className={`w-full text-left px-3 py-2 rounded-lg text-[13px] transition-all duration-150 ${active ? 'font-semibold opacity-100' : 'opacity-50 hover:opacity-75'}`}
+      className={`w-full text-left px-3 py-1.5 rounded-lg text-[13px] transition-colors duration-150 ${active ? 'font-semibold opacity-100 nav-active' : 'opacity-50 hover:opacity-75'}`}
       style={active ? { background: 'var(--alemonjs-primary-bg, rgba(128,128,128,.08))' } : undefined}
     >
       {children}
@@ -37,7 +46,7 @@ function Pill({ active, onClick, children, small }: { active: boolean; onClick: 
   return (
     <button
       onClick={onClick}
-      className={`shrink-0 rounded-full font-medium transition-all whitespace-nowrap ${small ? 'px-2.5 py-1 text-[11px]' : 'px-3.5 py-1.5 text-xs'} ${active ? 'opacity-100' : 'opacity-40 hover:opacity-65'}`}
+      className={`shrink-0 rounded-full font-medium transition-colors whitespace-nowrap ${small ? 'px-2.5 py-1 text-[11px]' : 'px-3 py-1.5 text-xs'} ${active ? 'opacity-100' : 'opacity-40 hover:opacity-65'}`}
       style={active ? { background: 'var(--alemonjs-primary-bg, rgba(128,128,128,.1))' } : undefined}
     >
       {children}
@@ -48,78 +57,102 @@ function Pill({ active, onClick, children, small }: { active: boolean; onClick: 
 export default function App() {
   const [activeKey, setActiveKey] = useState('manage');
   const isConfig = CONFIG_KEYS.includes(activeKey);
+  const isRepo = REPO_KEYS.includes(activeKey);
 
   return (
     <SecondaryDiv className='min-h-screen lg:flex'>
       {/* ── PC 侧边栏 ── */}
       <SidebarDiv
-        className='hidden lg:flex lg:flex-col w-52 shrink-0 p-3 sticky top-0 h-screen overflow-y-auto'
+        className='hidden lg:flex lg:flex-col w-44 shrink-0 px-2 py-3 sticky top-0 h-screen overflow-y-auto'
         style={{ borderRight: '1px solid rgba(128,128,128,.08)' }}
       >
-        <div className='flex items-center gap-2.5 px-3 py-3 mb-4'>
+        <div className='flex items-center gap-2 px-3 py-2 mb-3'>
           <div
-            className='w-8 h-8 rounded-lg flex items-center justify-center text-base shadow-sm'
+            className='w-7 h-7 rounded-lg flex items-center justify-center text-sm shadow-sm'
             style={{ background: 'linear-gradient(135deg, #d5c8b2, #8f8c76)' }}
           >
             ⚡
           </div>
           <div>
-            <div className='text-sm font-bold gradient-text'>Yunzai</div>
-            <div className='text-[9px] opacity-30'>Miao-Yunzai · AlemonJS</div>
+            <div className='text-[13px] font-bold gradient-text leading-tight'>Yunzai</div>
+            <div className='text-[9px] opacity-30'>AlemonJS</div>
           </div>
         </div>
 
         <NavItem active={activeKey === 'manage'} onClick={() => setActiveKey('manage')}>
           ⚡ 管理
         </NavItem>
+        <NavItem active={activeKey === 'plugin'} onClick={() => setActiveKey('plugin')}>
+          🔌 插件
+        </NavItem>
 
-        <div className='text-[10px] uppercase tracking-wider opacity-25 font-medium px-3 pt-5 pb-1'>配置</div>
-        {CONFIG_SECTIONS.map(s => (
+        <div className='text-[10px] uppercase tracking-wider opacity-25 font-medium px-3 pt-4 pb-1'>仓库配置</div>
+        {REPO_SECTIONS.map(s => (
           <NavItem key={s.key} active={activeKey === s.key} onClick={() => setActiveKey(s.key)}>
             {s.label}
           </NavItem>
         ))}
 
-        <div className='text-[10px] uppercase tracking-wider opacity-25 font-medium px-3 pt-5 pb-1'>其他</div>
-        <NavItem active={activeKey === 'repo'} onClick={() => setActiveKey('repo')}>
-          📦 仓库
-        </NavItem>
+        <div className='text-[10px] uppercase tracking-wider opacity-25 font-medium px-3 pt-4 pb-1'>Miao-Yunzai</div>
+        {CONFIG_SECTIONS.map(s => (
+          <NavItem key={s.key} active={activeKey === s.key} onClick={() => setActiveKey(s.key)}>
+            {s.label}
+          </NavItem>
+        ))}
       </SidebarDiv>
 
       {/* ── 主内容区 ── */}
-      <div className='flex-1 min-h-screen flex flex-col'>
+      <div className='flex-1 min-h-screen flex flex-col min-w-0'>
         {/* ── 移动端导航 ── */}
         <div className='lg:hidden'>
-          <HeaderDiv className='px-4 py-3 flex items-center gap-3'>
+          <HeaderDiv className='px-3 py-2.5 flex items-center gap-2.5'>
             <div
-              className='w-8 h-8 rounded-lg flex items-center justify-center text-base shadow-sm'
+              className='w-7 h-7 rounded-lg flex items-center justify-center text-sm shadow-sm'
               style={{ background: 'linear-gradient(135deg, #d5c8b2, #8f8c76)' }}
             >
               ⚡
             </div>
-            <div>
-              <div className='text-sm font-bold gradient-text'>Yunzai 管理面板</div>
-              <div className='text-[10px] opacity-30'>Miao-Yunzai · AlemonJS</div>
-            </div>
+            <div className='text-[13px] font-bold gradient-text'>Yunzai</div>
           </HeaderDiv>
-          <div className='flex gap-1.5 px-3 py-2'>
+          <div className='flex gap-1.5 px-3 py-1.5'>
             <Pill active={activeKey === 'manage'} onClick={() => setActiveKey('manage')}>
               管理
+            </Pill>
+            <Pill active={activeKey === 'plugin'} onClick={() => setActiveKey('plugin')}>
+              插件
+            </Pill>
+            <Pill
+              active={isRepo}
+              onClick={() => {
+                if (!isRepo) {
+                  setActiveKey('auth');
+                }
+              }}
+            >
+              仓库
             </Pill>
             <Pill
               active={isConfig}
               onClick={() => {
-                if (!isConfig) { setActiveKey('qq'); }
+                if (!isConfig) {
+                  setActiveKey('qq');
+                }
               }}
             >
               配置
             </Pill>
-            <Pill active={activeKey === 'repo'} onClick={() => setActiveKey('repo')}>
-              仓库
-            </Pill>
           </div>
+          {isRepo && (
+            <div className='flex gap-1 px-3 pb-2 overflow-x-auto' style={{ scrollbarWidth: 'none' }}>
+              {REPO_SECTIONS.map(s => (
+                <Pill key={s.key} active={activeKey === s.key} onClick={() => setActiveKey(s.key)} small>
+                  {s.short}
+                </Pill>
+              ))}
+            </div>
+          )}
           {isConfig && (
-            <div className='flex gap-1.5 px-3 pb-2 overflow-x-auto' style={{ scrollbarWidth: 'none' }}>
+            <div className='flex gap-1 px-3 pb-2 overflow-x-auto' style={{ scrollbarWidth: 'none' }}>
               {CONFIG_SECTIONS.map(s => (
                 <Pill key={s.key} active={activeKey === s.key} onClick={() => setActiveKey(s.key)} small>
                   {s.short}
@@ -130,12 +163,11 @@ export default function App() {
         </div>
 
         {/* ── 内容 ── */}
-        <div className='flex-1 px-3 py-3 sm:px-4 lg:px-8 lg:py-6'>
-          <div className='max-w-3xl mx-auto'>
-            {activeKey === 'manage' && <Manage />}
-            {isConfig && <From section={activeKey} />}
-            {activeKey === 'repo' && <Repo />}
-          </div>
+        <div className='flex-1 px-3 py-2 sm:px-4 lg:px-6 lg:py-4'>
+          {activeKey === 'manage' && <Manage />}
+          {activeKey === 'plugin' && <Plugin />}
+          {isConfig && <From section={activeKey} />}
+          {isRepo && <Repo section={activeKey} />}
         </div>
       </div>
     </SecondaryDiv>

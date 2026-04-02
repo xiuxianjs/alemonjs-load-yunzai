@@ -1,10 +1,6 @@
-import { Button, Dropdown, Input, Modal, NotificationDiv, PrimaryDiv, Select, TagDiv } from '@alemonjs/react-ui';
+import { Button, Modal, NotificationDiv, PrimaryDiv, TagDiv } from '@alemonjs/react-ui';
 import { useEffect, useState } from 'react';
-
-interface PluginItem {
-  name: string;
-  installed: boolean;
-}
+import { SmartDropdown } from './SmartDropdown';
 
 interface ManagerState {
   status: string;
@@ -12,7 +8,6 @@ interface ManagerState {
   running: boolean;
   busy: boolean;
   busyTask: string;
-  plugins: PluginItem[];
   logCount: number;
 }
 
@@ -23,13 +18,10 @@ export default function Manage() {
     running: false,
     busy: false,
     busyTask: '',
-    plugins: [],
     logCount: 0
   });
   const [loading, setLoading] = useState('');
   const [message, setMessage] = useState('');
-  const [pluginInput, setPluginInput] = useState('');
-  const [pluginSource, setPluginSource] = useState<'alias' | 'url'>('alias');
   const [confirmAction, setConfirmAction] = useState<{ action: string; label: string; extra?: Record<string, string> } | null>(null);
 
   const showMessage = (msg: string) => {
@@ -76,20 +68,10 @@ export default function Manage() {
     setConfirmAction(null);
   };
 
-  const handleInstallPlugin = () => {
-    const val = pluginInput.trim();
-
-    if (!val) {
-      return;
-    }
-    sendAction('install_plugin', `安装 ${val}`, { plugin: val });
-    setPluginInput('');
-  };
-
   const isDisabled = !!loading || state.busy;
 
   return (
-    <div className='py-2 space-y-4'>
+    <div className='py-2 space-y-3'>
       {/* ── 通知 ── */}
       {message && <NotificationDiv className='rounded-xl px-4 py-3 text-sm animate-fade-in shadow-sm'>{message}</NotificationDiv>}
 
@@ -108,9 +90,9 @@ export default function Manage() {
         </PrimaryDiv>
       )}
 
-      {/* ── 状态卡片 + 进程控制（PC 端并排） ── */}
-      <div className={`space-y-4 ${state.installed ? 'xl:flex xl:gap-5 xl:space-y-0 xl:items-start' : ''}`}>
-        <PrimaryDiv className='rounded-xl p-5 card-hover xl:flex-1'>
+      {/* ── 状态卡片 + 操作 ── */}
+      <div className={`space-y-3 ${state.installed ? 'xl:flex xl:gap-4 xl:space-y-0 xl:items-start' : ''}`}>
+        <PrimaryDiv className='rounded-xl p-4 card-hover xl:flex-1'>
           <div className='flex items-center justify-between'>
             <div className='flex items-center gap-3'>
               <div
@@ -138,25 +120,20 @@ export default function Manage() {
         </PrimaryDiv>
 
         {state.installed && (
-          <div className='grid grid-cols-3 gap-2.5 xl:flex xl:flex-col xl:gap-2 xl:min-w-[180px]'>
-            {!state.running ? (
-              <Button className='py-2.5 rounded-xl text-sm font-medium' onClick={() => sendAction('start', '启动')} disabled={isDisabled}>
-                ▶ 启动
-              </Button>
-            ) : (
-              <Button className='py-2.5 rounded-xl text-sm font-medium' onClick={() => sendAction('stop', '停止')} disabled={isDisabled}>
-                ■ 停止
-              </Button>
-            )}
-            <Button className='py-2.5 rounded-xl text-sm font-medium' onClick={() => sendAction('restart', '重启')} disabled={isDisabled || !state.running}>
-              ↻ 重启
-            </Button>
-            <Dropdown
-              placement='bottomRight'
+          <div className='grid grid-cols-2 gap-2.5 xl:flex xl:flex-col xl:gap-2 xl:min-w-[180px]'>
+            <SmartDropdown
               buttons={[
                 { children: '更新', onClick: () => sendAction('update', '更新'), disabled: isDisabled },
                 { children: '强制更新', onClick: () => sendAction('force_update', '强制更新'), disabled: isDisabled },
-                { children: '重装依赖', onClick: () => sendAction('install_deps', '安装依赖'), disabled: isDisabled },
+                { children: '重装依赖', onClick: () => sendAction('install_deps', '安装依赖'), disabled: isDisabled }
+              ]}
+            >
+              <Button className='w-full py-2.5 rounded-xl text-sm font-medium' disabled={isDisabled}>
+                更新 ▾
+              </Button>
+            </SmartDropdown>
+            <SmartDropdown
+              buttons={[
                 {
                   children: `清理日志${state.logCount > 0 ? ` (${state.logCount})` : ''}`,
                   onClick: () => sendAction('clean_logs', '清理日志'),
@@ -166,15 +143,15 @@ export default function Manage() {
               ]}
             >
               <Button className='w-full py-2.5 rounded-xl text-sm font-medium' disabled={isDisabled}>
-                更多 ▾
+                维护 ▾
               </Button>
-            </Dropdown>
+            </SmartDropdown>
           </div>
         )}
       </div>
 
       {/* ── 操作区 ── */}
-      {!state.installed ? (
+      {!state.installed && (
         <Button
           className='w-full py-3.5 rounded-xl text-sm font-semibold shadow-sm'
           onClick={() => sendAction('install', '安装 Yunzai')}
@@ -183,67 +160,6 @@ export default function Manage() {
         >
           安装 Yunzai
         </Button>
-      ) : (
-        <div className='xl:grid xl:grid-cols-2 xl:gap-5 space-y-4 xl:space-y-0'>
-          {/* ── 插件安装 ── */}
-          <PrimaryDiv className='rounded-xl p-5 space-y-3 card-hover'>
-            <div className='text-sm font-semibold opacity-75'>📦 安装插件</div>
-            <div className='flex gap-2'>
-              <Select
-                value={pluginSource}
-                onChange={e => setPluginSource((e.target as HTMLSelectElement).value as 'alias' | 'url')}
-                className='w-20 px-2 py-1.5 text-xs rounded-xl'
-              >
-                <option value='alias'>别名</option>
-                <option value='url'>URL</option>
-              </Select>
-              <Input
-                type='text'
-                value={pluginInput}
-                onChange={e => setPluginInput(e.target.value)}
-                onKeyDown={e => e.key === 'Enter' && handleInstallPlugin()}
-                placeholder={pluginSource === 'alias' ? 'miao / starrail / zzz ...' : 'https://github.com/xxx/plugin.git'}
-                className='flex-1 px-3 py-1.5 text-sm rounded-xl'
-              />
-              <Button className='px-4 py-1.5 rounded-xl text-sm font-medium' onClick={handleInstallPlugin} disabled={isDisabled || !pluginInput.trim()}>
-                安装
-              </Button>
-            </div>
-          </PrimaryDiv>
-
-          {/* ── 已安装插件 ── */}
-          {state.plugins.length > 0 && (
-            <PrimaryDiv className='rounded-xl overflow-hidden card-hover xl:max-h-[400px] xl:overflow-y-auto'>
-              <div className='px-5 py-3.5 text-sm font-semibold opacity-75'>🔌 已安装插件 ({state.plugins.length})</div>
-              <div className='divide-y divide-gray-200/10'>
-                {state.plugins.map(p => (
-                  <div key={p.name} className='flex items-center justify-between px-5 py-3 row-hover'>
-                    <span className='text-sm'>{p.name}</span>
-                    <Dropdown
-                      placement='bottomRight'
-                      buttons={[
-                        { children: '更新', onClick: () => sendAction('update_plugin', `更新 ${p.name}`, { plugin: p.name }), disabled: isDisabled },
-                        {
-                          children: '强制更新',
-                          onClick: () => sendAction('force_update_plugin', `强制更新 ${p.name}`, { plugin: p.name }),
-                          disabled: isDisabled
-                        },
-                        {
-                          children: '卸载',
-                          onClick: () => dangerAction('uninstall_plugin', `卸载 ${p.name}`, { plugin: p.name }),
-                          disabled: isDisabled,
-                          className: 'text-red-400'
-                        }
-                      ]}
-                    >
-                      <Button className='px-2.5 py-1 text-xs rounded-lg'>···</Button>
-                    </Dropdown>
-                  </div>
-                ))}
-              </div>
-            </PrimaryDiv>
-          )}
-        </div>
       )}
 
       {/* ── 确认弹窗 ── */}

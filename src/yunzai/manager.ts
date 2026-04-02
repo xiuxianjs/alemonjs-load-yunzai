@@ -13,6 +13,8 @@ import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node
 import { join } from 'node:path';
 import type { PluginInfo } from '../path';
 import { getDefaultRepo, getGhProxy, getYunzaiDir, WORKER_PATH, YARN_PATH } from '../path';
+import type { GitResult } from './git';
+import { gitClone, gitFetchAll, gitPull, gitResetHard } from './git';
 import type { IPCApiRequest, IPCReply, ParentToWorker, WorkerToParent } from './protocol';
 
 type ReplyHandler = (reply: IPCReply) => void;
@@ -141,7 +143,7 @@ class YunzaiManager {
     this.beginTask('安装');
     try {
       logger.info(`[Yunzai] 正在克隆 ${repoUrl} ...`);
-      await this.git(['clone', '--depth', '1', '--single-branch', repoUrl, yunzaiDir]);
+      await this.execGit(gitClone(repoUrl, yunzaiDir));
       this.throwIfCancelled();
       this.ensureWorkspaces();
       this.throwIfCancelled();
@@ -175,13 +177,13 @@ class YunzaiManager {
 
       if (force) {
         logger.info('[Yunzai] 强制重置本地更改...');
-        await this.git(['fetch', '--all'], dir);
+        await this.execGit(gitFetchAll(dir));
         this.throwIfCancelled();
-        await this.git(['reset', '--hard', 'origin/HEAD'], dir);
+        await this.execGit(gitResetHard(dir));
         this.throwIfCancelled();
       }
       logger.info('[Yunzai] 正在拉取更新...');
-      const out = await this.git(['pull'], dir);
+      const out = await this.execGit(gitPull(dir));
 
       this.throwIfCancelled();
       logger.info('[Yunzai] 更新完成');
@@ -209,13 +211,13 @@ class YunzaiManager {
 
       if (force) {
         logger.info('[Yunzai] 强制重置本地更改...');
-        await this.git(['fetch', '--all'], dir);
+        await this.execGit(gitFetchAll(dir));
         this.throwIfCancelled();
-        await this.git(['reset', '--hard', 'origin/HEAD'], dir);
+        await this.execGit(gitResetHard(dir));
         this.throwIfCancelled();
       }
       logger.info('[Yunzai] 正在拉取更新...');
-      const out = await this.git(['pull'], dir);
+      const out = await this.execGit(gitPull(dir));
 
       this.throwIfCancelled();
       this.ensureWorkspaces();
@@ -279,7 +281,7 @@ class YunzaiManager {
       // 安装阶段
       try {
         logger.info(`[Yunzai] 正在克隆 ${repoUrl} ...`);
-        await this.git(['clone', '--depth', '1', '--single-branch', repoUrl, yunzaiDir]);
+        await this.execGit(gitClone(repoUrl, yunzaiDir));
         this.throwIfCancelled();
         this.ensureWorkspaces();
         this.throwIfCancelled();
@@ -590,22 +592,14 @@ class YunzaiManager {
     }
   }
 
-  private git(args: string[], cwd?: string): Promise<string> {
-    return new Promise((resolve, reject) => {
-      const cp = execFile('git', args, { cwd, timeout: 1_800_000 }, (err, stdout, stderr) => {
-        this.taskProcess = null;
-        if (err) {
-          const hint = (err as any).killed ? ' (超时)' : '';
-          const detail = stderr?.trim() ? `${stderr.trim()}\n${err.message}` : err.message;
-
-          reject(new Error(`${detail}${hint}`));
-        } else {
-          resolve(stdout);
-        }
-      });
-
-      this.taskProcess = cp;
-    });
+  /** 执行 git 操作并跟踪子进程（用于取消） */
+  private async execGit(result: GitResult): Promise<string> {
+    this.taskProcess = result.process;
+    try {
+      return await result.promise;
+    } finally {
+      this.taskProcess = null;
+    }
   }
 
   /** 使用内置 yarn 安装依赖（原生支持 workspaces，插件子包依赖一并安装） */
@@ -642,7 +636,7 @@ class YunzaiManager {
       const repoUrl = plugin.repoUrl.startsWith('https://github.com/') ? `${getGhProxy()}${plugin.repoUrl}` : plugin.repoUrl;
 
       logger.info(`[Yunzai] 正在安装 ${plugin.label}...`);
-      await this.git(['clone', '--depth', '1', '--single-branch', repoUrl, pluginDir]);
+      await this.execGit(gitClone(repoUrl, pluginDir));
       this.throwIfCancelled();
       this.ensureWorkspaces();
       logger.info('[Yunzai] 正在安装插件依赖...');
@@ -675,13 +669,13 @@ class YunzaiManager {
     try {
       if (force) {
         logger.info(`[Yunzai] 强制重置 ${plugin.label} 本地更改...`);
-        await this.git(['fetch', '--all'], pluginDir);
+        await this.execGit(gitFetchAll(pluginDir));
         this.throwIfCancelled();
-        await this.git(['reset', '--hard', 'origin/HEAD'], pluginDir);
+        await this.execGit(gitResetHard(pluginDir));
         this.throwIfCancelled();
       }
       logger.info(`[Yunzai] 正在更新 ${plugin.label}...`);
-      const out = await this.git(['pull'], pluginDir);
+      const out = await this.execGit(gitPull(pluginDir));
 
       this.throwIfCancelled();
       this.ensureWorkspaces();
